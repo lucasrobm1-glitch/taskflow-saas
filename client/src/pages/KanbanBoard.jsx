@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const API = import.meta.env.VITE_API_URL || ''
 
@@ -14,10 +15,14 @@ const TYPE_ICONS = { task: '✅', bug: '🐛', feature: '✨', improvement: '⚡
 
 export default function KanbanBoard() {
   const { projectId } = useParams()
+  const { user } = useAuth()
+  const isAdminOrOwner = user && ['admin', 'owner'].includes(user.role)
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [selectedTask, setSelectedTask] = useState(null)
+  const [editMode, setEditMode] = useState(false)
+  const [editForm, setEditForm] = useState({})
   const [newTaskColumn, setNewTaskColumn] = useState('todo')
   const [taskForm, setTaskForm] = useState({ title: '', description: '', priority: 'medium', type: 'task', dueDate: '', estimatedHours: '' })
   const [msg, setMsg] = useState('')
@@ -37,6 +42,35 @@ export default function KanbanBoard() {
     setTasks(prev => prev.map(t => t._id === taskId ? { ...t, column: colId } : t))
     await api(`/api/tasks/${taskId}/move`, { method: 'PATCH', body: JSON.stringify({ column: colId, order: 0 }) }).catch(() => {})
     dragTask.current = null
+  }
+
+  const deleteTask = async (taskId) => {
+    if (!window.confirm('Tem certeza que deseja apagar esta tarefa?')) return
+    await api(`/api/tasks/${taskId}`, { method: 'DELETE' })
+    setTasks(prev => prev.filter(t => t._id !== taskId))
+    setSelectedTask(null)
+  }
+
+  const startEdit = (task) => {
+    setEditForm({
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority,
+      type: task.type,
+      dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
+      estimatedHours: task.estimatedHours || ''
+    })
+    setEditMode(true)
+  }
+
+  const saveEdit = async (e) => {
+    e.preventDefault()
+    const updated = await api(`/api/tasks/${selectedTask._id}`, { method: 'PUT', body: JSON.stringify(editForm) })
+    if (updated._id) {
+      setTasks(prev => prev.map(t => t._id === updated._id ? updated : t))
+      setSelectedTask(updated)
+      setEditMode(false)
+    }
   }
 
   const createTask = async (e) => {
@@ -178,32 +212,88 @@ export default function KanbanBoard() {
       {selectedTask && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#1e1e3a', border: '1px solid #2a2a4a', borderRadius: 16, padding: 24, width: '100%', maxWidth: 600, maxHeight: '80vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span>{TYPE_ICONS[selectedTask.type] || '✅'}</span>
                 <span style={{ fontSize: 12, background: '#2a2a4a', color: '#94a3b8', padding: '2px 8px', borderRadius: 999 }}>{selectedTask.type}</span>
                 <span style={{ color: PRIORITY_COLORS[selectedTask.priority], fontSize: 13, fontWeight: 600 }}>{PRIORITY_LABELS[selectedTask.priority]}</span>
               </div>
-              <button onClick={() => setSelectedTask(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 20 }}>✕</button>
-            </div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e2e8f0', marginBottom: 12 }}>{selectedTask.title}</h2>
-            {selectedTask.description && <p style={{ color: '#94a3b8', fontSize: 14, marginBottom: 16, lineHeight: 1.6 }}>{selectedTask.description}</p>}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              {selectedTask.dueDate && <div style={{ fontSize: 13, color: '#e2e8f0' }}>📅 Prazo: {new Date(selectedTask.dueDate).toLocaleDateString('pt-BR')}</div>}
-              {selectedTask.estimatedHours > 0 && <div style={{ fontSize: 13, color: '#e2e8f0' }}>⏱️ Estimativa: {selectedTask.estimatedHours}h</div>}
-            </div>
-            {selectedTask.assignees?.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 8 }}>Responsáveis</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {selectedTask.assignees.map(a => (
-                    <div key={a._id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'white', fontWeight: 700 }}>{a.name?.[0]?.toUpperCase()}</div>
-                      <span style={{ fontSize: 13, color: '#e2e8f0' }}>{a.name}</span>
-                    </div>
-                  ))}
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {isAdminOrOwner && !editMode && (
+                  <>
+                    <button onClick={() => startEdit(selectedTask)}
+                      style={{ padding: '5px 12px', background: '#2a2a4a', border: '1px solid #3a3a5a', borderRadius: 8, color: '#a5b4fc', cursor: 'pointer', fontSize: 13 }}>
+                      ✏️ Editar
+                    </button>
+                    <button onClick={() => deleteTask(selectedTask._id)}
+                      style={{ padding: '5px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: 8, color: '#f87171', cursor: 'pointer', fontSize: 13 }}>
+                      🗑️ Apagar
+                    </button>
+                  </>
+                )}
+                <button onClick={() => { setSelectedTask(null); setEditMode(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 20 }}>✕</button>
               </div>
+            </div>
+
+            {editMode ? (
+              <form onSubmit={saveEdit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <input style={inputStyle} placeholder="Título" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} required />
+                <textarea style={{ ...inputStyle, resize: 'vertical' }} placeholder="Descrição" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} rows={3} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: '#94a3b8' }}>Prioridade</label>
+                    <select style={inputStyle} value={editForm.priority} onChange={e => setEditForm({ ...editForm, priority: e.target.value })}>
+                      <option value="low">Baixa</option>
+                      <option value="medium">Média</option>
+                      <option value="high">Alta</option>
+                      <option value="critical">Crítica</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: '#94a3b8' }}>Tipo</label>
+                    <select style={inputStyle} value={editForm.type} onChange={e => setEditForm({ ...editForm, type: e.target.value })}>
+                      <option value="task">Tarefa</option>
+                      <option value="bug">Bug</option>
+                      <option value="feature">Feature</option>
+                      <option value="improvement">Melhoria</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: '#94a3b8' }}>Prazo</label>
+                    <input style={inputStyle} type="date" value={editForm.dueDate} onChange={e => setEditForm({ ...editForm, dueDate: e.target.value })} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: '#94a3b8' }}>Horas estimadas</label>
+                    <input style={inputStyle} type="number" placeholder="0" value={editForm.estimatedHours} onChange={e => setEditForm({ ...editForm, estimatedHours: e.target.value })} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => setEditMode(false)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #2a2a4a', borderRadius: 8, color: '#94a3b8', cursor: 'pointer' }}>Cancelar</button>
+                  <button type="submit" style={{ padding: '8px 16px', background: '#6366f1', border: 'none', borderRadius: 8, color: 'white', fontWeight: 600, cursor: 'pointer' }}>Salvar</button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e2e8f0', marginBottom: 12 }}>{selectedTask.title}</h2>
+                {selectedTask.description && <p style={{ color: '#94a3b8', fontSize: 14, marginBottom: 16, lineHeight: 1.6 }}>{selectedTask.description}</p>}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  {selectedTask.dueDate && <div style={{ fontSize: 13, color: '#e2e8f0' }}>📅 Prazo: {new Date(selectedTask.dueDate).toLocaleDateString('pt-BR')}</div>}
+                  {selectedTask.estimatedHours > 0 && <div style={{ fontSize: 13, color: '#e2e8f0' }}>⏱️ Estimativa: {selectedTask.estimatedHours}h</div>}
+                </div>
+                {selectedTask.assignees?.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 8 }}>Responsáveis</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {selectedTask.assignees.map(a => (
+                        <div key={a._id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'white', fontWeight: 700 }}>{a.name?.[0]?.toUpperCase()}</div>
+                          <span style={{ fontSize: 13, color: '#e2e8f0' }}>{a.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const Task = require('../models/Task');
-const { auth } = require('../middleware/auth');
+const { auth, requireRole } = require('../middleware/auth');
 
 // Listar tarefas de um projeto
 router.get('/', auth, async (req, res) => {
@@ -53,15 +53,21 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Atualizar tarefa (inclui mover coluna)
+// Atualizar tarefa (inclui mover coluna) - admin/owner podem editar qualquer tarefa
 router.put('/:id', auth, async (req, res) => {
+  const isAdminOrOwner = ['admin', 'owner'].includes(req.user.role);
+  const filter = { _id: req.params.id, tenant: req.tenant._id };
+  // membros só editam tarefas onde são reporter ou assignee
+  if (!isAdminOrOwner) {
+    filter.$or = [{ reporter: req.user._id }, { assignees: req.user._id }];
+  }
   try {
     const task = await Task.findOneAndUpdate(
-      { _id: req.params.id, tenant: req.tenant._id },
+      filter,
       req.body,
       { new: true }
     ).populate('assignees', 'name avatar').populate('reporter', 'name avatar');
-    if (!task) return res.status(404).json({ message: 'Tarefa não encontrada' });
+    if (!task) return res.status(404).json({ message: 'Tarefa não encontrada ou sem permissão' });
 
     req.app.get('io')?.to(`project:${task.project}`).emit('task:updated', task);
     res.json(task);
@@ -132,8 +138,8 @@ router.patch('/:id/time/:entryId/stop', auth, async (req, res) => {
   }
 });
 
-// Deletar tarefa
-router.delete('/:id', auth, async (req, res) => {
+// Deletar tarefa - somente admin ou owner
+router.delete('/:id', auth, requireRole('admin', 'owner'), async (req, res) => {
   try {
     await Task.findOneAndDelete({ _id: req.params.id, tenant: req.tenant._id });
     res.json({ message: 'Tarefa deletada' });
