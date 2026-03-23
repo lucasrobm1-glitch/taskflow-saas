@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
+const passport = require('passport');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const projectRoutes = require('./routes/projects');
@@ -15,6 +16,7 @@ const subscriptionRoutes = require('./routes/subscriptions');
 const reportRoutes = require('./routes/reports');
 const integrationRoutes = require('./routes/integrations');
 const webhookRoutes = require('./routes/webhooks');
+const ssoRoutes = require('./routes/sso');
 
 const { setupSocket } = require('./services/socket');
 
@@ -38,6 +40,7 @@ app.use(cors(corsOptions));
 app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
 
 app.use(express.json());
+app.use(passport.initialize());
 
 // Rotas
 app.use('/api/auth', authRoutes);
@@ -49,6 +52,7 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/integrations', integrationRoutes);
+app.use('/api/sso', ssoRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

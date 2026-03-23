@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const Task = require('../models/Task');
 const { auth, requireRole } = require('../middleware/auth');
+const { notifyTaskCreated, notifyTaskMoved } = require('../services/slack');
 
 // Listar tarefas de um projeto
 router.get('/', auth, async (req, res) => {
@@ -32,6 +33,7 @@ router.post('/', auth, async (req, res) => {
 
     // Emitir evento socket
     req.app.get('io')?.to(`project:${task.project}`).emit('task:created', task);
+    notifyTaskCreated(req.tenant._id, task, req.user.name);
     res.status(201).json(task);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -87,6 +89,7 @@ router.patch('/:id/move', auth, async (req, res) => {
     ).populate('assignees', 'name avatar');
 
     req.app.get('io')?.to(`project:${task.project}`).emit('task:moved', { taskId: task._id, column, order });
+    notifyTaskMoved(req.tenant._id, task, column);
     res.json(task);
   } catch (err) {
     res.status(500).json({ message: err.message });
