@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 
+const API = import.meta.env.VITE_API_URL || ''
+
 const api = (path, opts = {}) => {
   const token = localStorage.getItem('token')
-  return fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(opts.headers || {}) } }).then(r => r.json())
+  return fetch(API + path, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(opts.headers || {}) } }).then(r => r.json())
 }
 
 const PLANS = [
