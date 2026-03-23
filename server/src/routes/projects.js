@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const Project = require('../models/Project');
 const { auth, requireRole } = require('../middleware/auth');
+const { checkProjectLimit } = require('../middleware/planLimits');
 
 // Listar projetos do tenant
 router.get('/', auth, async (req, res) => {
@@ -16,7 +17,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Criar projeto
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, checkProjectLimit, async (req, res) => {
   try {
     const { name, description, color, icon } = req.body;
     const project = new Project({

@@ -2,8 +2,9 @@ const router = require('express').Router();
 const Sprint = require('../models/Sprint');
 const Task = require('../models/Task');
 const { auth } = require('../middleware/auth');
+const { checkSprintAccess } = require('../middleware/planLimits');
 
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, checkSprintAccess, async (req, res) => {
   try {
     const { projectId } = req.query;
     const filter = { tenant: req.tenant._id };
@@ -15,7 +16,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, checkSprintAccess, async (req, res) => {
   try {
     const sprint = new Sprint({ ...req.body, tenant: req.tenant._id });
     await sprint.save();

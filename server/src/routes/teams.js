@@ -2,6 +2,7 @@ const router = require('express').Router();
 const User = require('../models/User');
 const { auth, requireRole } = require('../middleware/auth');
 const nodemailer = require('nodemailer');
+const { checkMemberLimit } = require('../middleware/planLimits');
 
 // Listar membros do tenant
 router.get('/', auth, async (req, res) => {
@@ -14,7 +15,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Convidar membro (envia email)
-router.post('/invite', auth, requireRole('owner', 'admin'), async (req, res) => {
+router.post('/invite', auth, requireRole('owner', 'admin'), checkMemberLimit, async (req, res) => {
   try {
     const { email, role } = req.body;
     const existing = await User.findOne({ email });

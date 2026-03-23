@@ -3,9 +3,10 @@ const Task = require('../models/Task');
 const Sprint = require('../models/Sprint');
 const User = require('../models/User');
 const { auth, requirePlan } = require('../middleware/auth');
+const { checkReportsAccess } = require('../middleware/planLimits');
 
 // Relatório geral do projeto
-router.get('/project/:projectId', auth, async (req, res) => {
+router.get('/project/:projectId', auth, checkReportsAccess, async (req, res) => {
   try {
     const { projectId } = req.params;
     const { from, to } = req.query;
