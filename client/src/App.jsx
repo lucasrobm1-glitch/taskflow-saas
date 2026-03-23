@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, NavLink, Outlet, useNavigate } 
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import InvitePage from './pages/InvitePage.jsx'
+import VerifySuccess from './pages/VerifySuccess.jsx'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 
 const API = import.meta.env.VITE_API_URL || ''
@@ -98,6 +99,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/invite" element={<InvitePage />} />
+            <Route path="/verify-success" element={<VerifySuccess />} />
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="projects/:projectId/board" element={<KanbanBoard />} />

@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['owner', 'admin', 'member', 'viewer'], default: 'member' },
   tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant' },
   isActive: { type: Boolean, default: true },
+  emailVerified: { type: Boolean, default: false },
+  emailVerifyToken: { type: String },
   lastLogin: { type: Date },
   notifications: {
     email: { type: Boolean, default: true },

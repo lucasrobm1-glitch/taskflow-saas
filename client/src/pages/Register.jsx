@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 const API = import.meta.env.VITE_API_URL || ''
 
@@ -7,7 +7,7 @@ export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '', companyName: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
+  const [success, setSuccess] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -21,8 +21,7 @@ export default function Register() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)
-      localStorage.setItem('token', data.token)
-      window.location.href = '/'
+      setSuccess(true)
     } catch (err) {
       setError(err.message || 'Erro ao criar conta')
     } finally {
@@ -31,6 +30,24 @@ export default function Register() {
   }
 
   const inp = { width: '100%', padding: '10px 12px', background: '#16213e', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }
+
+  if (success) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0f1a' }}>
+        <div style={{ width: '100%', maxWidth: 420, padding: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>📧</div>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e2e8f0', marginBottom: 8 }}>Verifique seu email</h2>
+          <p style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.6 }}>
+            Enviamos um link de confirmação para <span style={{ color: '#a5b4fc' }}>{form.email}</span>.<br />
+            Clique no link para ativar sua conta.
+          </p>
+          <p style={{ color: '#64748b', fontSize: 13, marginTop: 24 }}>
+            Já confirmou? <Link to="/login" style={{ color: '#6366f1', textDecoration: 'none' }}>Entrar</Link>
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0f1a' }}>
