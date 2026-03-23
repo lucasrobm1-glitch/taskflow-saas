@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 
+const API = import.meta.env.VITE_API_URL || ''
 const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
@@ -10,7 +11,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { setLoading(false); return }
-    fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+    fetch(`${API}/api/auth/me`, { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json())
       .then(d => { setUser(d.user); setTenant(d.tenant) })
       .catch(() => localStorage.removeItem('token'))
@@ -18,7 +19,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = async (email, password) => {
-    const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
+    const res = await fetch(`${API}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message)
     localStorage.setItem('token', data.token)
@@ -27,7 +28,7 @@ export function AuthProvider({ children }) {
   }
 
   const register = async (name, email, password, companyName) => {
-    const res = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password, companyName }) })
+    const res = await fetch(`${API}/api/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password, companyName }) })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message)
     localStorage.setItem('token', data.token)

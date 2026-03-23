@@ -4,6 +4,8 @@ import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 
+const API = import.meta.env.VITE_API_URL || ''
+
 export { useAuth }
 
 function Layout() {
@@ -13,7 +15,7 @@ function Layout() {
 
   useEffect(() => {
     const token = localStorage.getItem('token')
-    fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token } })
+    fetch(`${API}/api/projects`, { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json()).then(d => Array.isArray(d) && setProjects(d)).catch(() => {})
   }, [])
 
