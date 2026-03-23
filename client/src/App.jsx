@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
+import InvitePage from './pages/InvitePage.jsx'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 
 const API = import.meta.env.VITE_API_URL || ''
@@ -96,6 +97,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/invite" element={<InvitePage />} />
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="projects/:projectId/board" element={<KanbanBoard />} />

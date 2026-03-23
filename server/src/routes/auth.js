@@ -32,6 +32,27 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// Registro por convite
+router.post('/register-invite', async (req, res) => {
+  try {
+    const { name, email, password, tenantId, role } = req.body;
+
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: 'Email já cadastrado' });
+
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant) return res.status(404).json({ message: 'Workspace não encontrado' });
+
+    const user = new User({ name, email, password, role: role || 'member', tenant: tenant._id });
+    await user.save();
+
+    const token = signToken(user._id);
+    res.status(201).json({ token, user, tenant });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Login
 router.post('/login', async (req, res) => {
   try {
