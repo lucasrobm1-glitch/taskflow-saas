@@ -80,6 +80,31 @@ router.get('/verify-email', async (req, res) => {
   }
 });
 
+// Reenviar email de verificação
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body
+    const user = await User.findOne({ email })
+    if (!user) return res.status(404).json({ message: 'Email não encontrado' })
+    if (user.emailVerified) return res.status(400).json({ message: 'Email já verificado. Faça login.' })
+
+    const verifyToken = crypto.randomBytes(32).toString('hex')
+    user.emailVerifyToken = verifyToken
+    await user.save()
+
+    const verifyLink = `${process.env.CLIENT_URL?.split(',')[1] || process.env.CLIENT_URL}/verify-email?token=${verifyToken}`
+    await mailer.sendMail({
+      from: `"TaskFlow" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Confirme seu email - TaskFlow',
+      html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#1e1e3a;border-radius:12px;color:#e2e8f0"><div style="text-align:center;margin-bottom:24px"><div style="font-size:32px">⚡</div><h2 style="color:#e2e8f0;margin:8px 0">Confirme seu email</h2></div><p style="color:#94a3b8">Clique no botão abaixo para ativar sua conta no TaskFlow.</p><div style="text-align:center;margin:32px 0"><a href="${verifyLink}" style="background:#6366f1;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Confirmar email</a></div><p style="color:#64748b;font-size:12px;text-align:center">Se você não criou uma conta, ignore este email.</p></div>`
+    })
+    res.json({ message: 'Email de verificação reenviado!' })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+})
+
 // Registro por convite
 router.post('/register-invite', async (req, res) => {
   try {

@@ -8,6 +8,27 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [resendEmail, setResendEmail] = useState('')
+  const [resendMsg, setResendMsg] = useState('')
+  const [resendLoading, setResendLoading] = useState(false)
+
+  const handleResend = async () => {
+    setResendLoading(true)
+    try {
+      const res = await fetch(`${API}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resendEmail })
+      })
+      const data = await res.json()
+      setResendMsg(data.message)
+      setError('')
+    } catch {
+      setResendMsg('Erro ao reenviar. Tente novamente.')
+    } finally {
+      setResendLoading(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -20,7 +41,10 @@ export default function Register() {
         body: JSON.stringify(form)
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message)
+      if (!res.ok) {
+        if (data.message === 'Email já cadastrado') setResendEmail(form.email)
+        throw new Error(data.message)
+      }
       setSuccess(true)
     } catch (err) {
       setError(err.message || 'Erro ao criar conta')
@@ -61,6 +85,20 @@ export default function Register() {
         {error && (
           <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#f87171', fontSize: 14 }}>
             {error}
+            {resendEmail && !resendMsg && (
+              <div style={{ marginTop: 8 }}>
+                <span style={{ color: '#94a3b8' }}>Não verificou o email? </span>
+                <button onClick={handleResend} disabled={resendLoading}
+                  style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 14, padding: 0, textDecoration: 'underline' }}>
+                  {resendLoading ? 'Enviando...' : 'Reenviar verificação'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        {resendMsg && (
+          <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#34d399', fontSize: 14 }}>
+            {resendMsg}
           </div>
         )}
 
