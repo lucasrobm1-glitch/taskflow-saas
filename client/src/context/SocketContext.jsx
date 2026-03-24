@@ -1,17 +1,17 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
 const SocketContext = createContext(null)
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
-export const SocketProvider = ({ children }) => {
+export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) return
 
-    // Importação dinâmica para não quebrar se socket.io falhar
     import('socket.io-client').then(({ io }) => {
-      const s = io('http://localhost:5000', { auth: { token }, transports: ['websocket', 'polling'] })
+      const s = io(API, { auth: { token }, transports: ['websocket', 'polling'] })
       s.on('connect', () => console.log('Socket conectado'))
       s.on('connect_error', (e) => console.warn('Socket erro:', e.message))
       setSocket(s)
