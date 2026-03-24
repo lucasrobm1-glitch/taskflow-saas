@@ -45,7 +45,12 @@ export default function Register() {
         if (data.message === 'Email já cadastrado') setResendEmail(form.email)
         throw new Error(data.message)
       }
-      setSuccess(true)
+      if (data.token) {
+        localStorage.setItem('token', data.token)
+        window.location.href = '/'
+      } else {
+        setSuccess(true)
+      }
     } catch (err) {
       setError(err.message || 'Erro ao criar conta')
     } finally {

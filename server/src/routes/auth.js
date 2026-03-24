@@ -32,7 +32,7 @@ router.post('/register', async (req, res) => {
     const slug = companyName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
     const verifyToken = crypto.randomBytes(32).toString('hex');
 
-    const user = new User({ name, email, password, role: 'owner', emailVerified: false, emailVerifyToken: verifyToken });
+    const user = new User({ name, email, password, role: 'owner', emailVerified: true, emailVerifyToken: verifyToken });
     await user.save();
 
     const tenant = new Tenant({ name: companyName, slug, owner: user._id });
@@ -41,8 +41,9 @@ router.post('/register', async (req, res) => {
     user.tenant = tenant._id;
     await user.save();
 
-    // Responde imediatamente, envia email em background
-    res.status(201).json({ message: 'Conta criada! Verifique seu email para ativar.' });
+    // Responde imediatamente com token para login automático
+    const token = signToken(user._id);
+    res.status(201).json({ token, user, tenant, message: 'Conta criada com sucesso!' });
 
     const verifyLink = `${process.env.CLIENT_URL?.split(',')[1] || process.env.CLIENT_URL}/verify-email?token=${verifyToken}`;
     mailer.sendMail({
