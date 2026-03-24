@@ -80,6 +80,7 @@ export default function Layout() {
         <div style={{ padding: '12px 8px', borderTop: '1px solid #2a2a4a' }}>
           <NavLink to="/settings" style={navStyle}><Settings size={16} /> Configurações</NavLink>
           <NavLink to="/settings/billing" style={navStyle}><CreditCard size={16} /> Plano & Billing</NavLink>
+          <NavLink to="/support" style={navStyle}><span style={{fontSize:16}}>🎧</span> Suporte</NavLink>
           <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 14, fontWeight: 500, width: '100%' }}>
             <LogOut size={16} /> Sair
           </button>

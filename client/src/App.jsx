@@ -53,6 +53,7 @@ function Layout() {
 
         <div style={{ padding: '12px 8px', borderTop: '1px solid #2a2a4a' }}>
           <NavLink to="/settings/billing" style={nav}>💳 Plano & Billing</NavLink>
+          <NavLink to="/support" style={nav}>🎧 Suporte</NavLink>
           <NavLink to="/settings" style={nav}>⚙️ Configuracoes</NavLink>
           <button onClick={() => { logout(); navigate('/login') }}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 14, width: '100%' }}>
@@ -83,6 +84,7 @@ const ReportsPage = React.lazy(() => import('./pages/ReportsPage.jsx'))
 const TeamPage = React.lazy(() => import('./pages/TeamPage.jsx'))
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage.jsx'))
 const BillingPage = React.lazy(() => import('./pages/BillingPage.jsx'))
+const SupportPage = React.lazy(() => import('./pages/SupportPage.jsx'))
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -108,6 +110,7 @@ export default function App() {
               <Route path="team" element={<TeamPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="settings/billing" element={<BillingPage />} />
+              <Route path="support" element={<SupportPage />} />
             </Route>
           </Routes>
         </React.Suspense>
