@@ -5,7 +5,7 @@ const API = import.meta.env.VITE_API_URL || ''
 
 const SUPPORT_EMAIL = 'lucas.robm1@gmail.com'
 const WHATSAPP = 'https://wa.me/5511999999999' // trocar pelo seu número
-const CALENDLY = 'https://calendly.com' // trocar pelo seu link após criar conta em calendly.com
+const CALENDLY = 'https://calendly.com/lucas-robm1/30min'
 
 const PLAN_SUPPORT = {
   free:       { label: 'Comunidade',  color: '#94a3b8', sla: null,       dedicated: false, onboarding: false },
