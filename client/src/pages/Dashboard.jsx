@@ -17,6 +17,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [projects, setProjects] = useState([])
   const [showModal, setShowModal] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null) // project a deletar
   const [form, setForm] = useState({ name: '', description: '', color: '#6366f1', icon: '📋' })
   const [members, setMembers] = useState(0)
   const [msg, setMsg] = useState('')
@@ -25,6 +26,13 @@ export default function Dashboard() {
     api('/api/projects').then(d => Array.isArray(d) && setProjects(d))
     api('/api/team').then(d => Array.isArray(d) && setMembers(d.length)).catch(() => {})
   }, [])
+
+  const deleteProject = async (id) => {
+    try {
+      await api(`/api/projects/${id}`, { method: 'DELETE' })
+      setProjects(prev => prev.filter(p => p._id !== id))
+    } catch { setMsg('Erro ao deletar projeto') }
+  }
 
   const createProject = async (e) => {
     e.preventDefault()
@@ -73,22 +81,35 @@ export default function Dashboard() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-        {projects.map(p => (
-          <div key={p._id} onClick={() => navigate(`/projects/${p._id}/board`)}
-            style={{ background: '#1e1e3a', border: '1px solid #2a2a4a', borderRadius: 12, padding: 20, cursor: 'pointer' }}
+        {projects.map(p => {
+          const isOwner = ['admin', 'owner'].includes(user?.role)
+          return (
+          <div key={p._id} style={{ position: 'relative', background: '#1e1e3a', border: '1px solid #2a2a4a', borderRadius: 12, padding: 20, cursor: 'pointer' }}
             onMouseEnter={e => e.currentTarget.style.borderColor = p.color || '#6366f1'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#2a2a4a'}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div onClick={() => navigate(`/projects/${p._id}/board`)} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: `${p.color || '#6366f1'}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{p.icon || '📋'}</div>
               <div>
                 <div style={{ fontWeight: 600, color: '#e2e8f0' }}>{p.name}</div>
                 <div style={{ fontSize: 12, color: '#94a3b8' }}>{p.members?.length || 0} membros</div>
               </div>
             </div>
-            {p.description && <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 10 }}>{p.description}</p>}
-            <span style={{ fontSize: 11, background: 'rgba(99,102,241,0.15)', color: '#818cf8', padding: '2px 8px', borderRadius: 999 }}>{p.status}</span>
+            {p.description && <p onClick={() => navigate(`/projects/${p._id}/board`)} style={{ fontSize: 13, color: '#94a3b8', marginBottom: 10 }}>{p.description}</p>}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span onClick={() => navigate(`/projects/${p._id}/board`)} style={{ fontSize: 11, background: 'rgba(99,102,241,0.15)', color: '#818cf8', padding: '2px 8px', borderRadius: 999 }}>{p.status}</span>
+              {isOwner && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(p) }}
+                  title="Deletar projeto"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', fontSize: 16, padding: '2px 6px', borderRadius: 6, lineHeight: 1 }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#475569'}
+                >🗑️</button>
+              )}
+            </div>
           </div>
-        ))}
+          )
+        })}
         <div onClick={() => setShowModal(true)}
           style={{ background: 'transparent', border: '2px dashed #2a2a4a', borderRadius: 12, padding: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#94a3b8', minHeight: 100 }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.color = '#6366f1' }}
@@ -130,6 +151,25 @@ export default function Dashboard() {
                 <button type="submit" style={{ padding: '8px 16px', background: '#6366f1', border: 'none', borderRadius: 8, color: 'white', fontWeight: 600, cursor: 'pointer' }}>Criar Projeto</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {confirmDelete && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+          <div style={{ background: '#1e1e3a', border: '1px solid #ef444444', borderRadius: 16, padding: 28, width: '100%', maxWidth: 400, textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: '#e2e8f0', marginBottom: 8 }}>Deletar "{confirmDelete.name}"?</h3>
+            <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 24 }}>Isso vai apagar o projeto e todas as tarefas permanentemente. Essa ação não pode ser desfeita.</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => setConfirmDelete(null)}
+                style={{ padding: '9px 20px', background: 'transparent', border: '1px solid #2a2a4a', borderRadius: 8, color: '#94a3b8', cursor: 'pointer', fontSize: 14 }}>
+                Cancelar
+              </button>
+              <button onClick={() => { deleteProject(confirmDelete._id); setConfirmDelete(null) }}
+                style={{ padding: '9px 20px', background: '#ef4444', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
+                Sim, deletar
+              </button>
+            </div>
           </div>
         </div>
       )}
