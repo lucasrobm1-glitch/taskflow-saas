@@ -54,16 +54,20 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/integrations', integrationRoutes);
 app.use('/api/sso', ssoRoutes);
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+let dbConnected = false;
+app.get('/api/health', (req, res) => res.json({ status: 'ok', db: dbConnected }));
 
 setupSocket(io);
 
+// Sobe o servidor imediatamente para o health check do Railway passar
+server.listen(process.env.PORT || 5000, () => {
+  console.log(`Servidor rodando na porta ${process.env.PORT || 5000}`);
+});
+
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
+    dbConnected = true;
     console.log('MongoDB conectado');
-    server.listen(process.env.PORT || 5000, () => {
-      console.log(`Servidor rodando na porta ${process.env.PORT || 5000}`);
-    });
   })
   .catch(err => console.error('Erro MongoDB:', err));
 
