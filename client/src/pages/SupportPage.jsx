@@ -3,9 +3,9 @@ import { useAuth } from '../context/AuthContext.jsx'
 
 const API = import.meta.env.VITE_API_URL || ''
 
-const SUPPORT_EMAIL = 'suporte@taskflow.com.br'
-const WHATSAPP = 'https://wa.me/5511999999999'
-const CALENDLY = 'https://calendly.com/taskflow/onboarding'
+const SUPPORT_EMAIL = 'lucas.robm1@gmail.com'
+const WHATSAPP = 'https://wa.me/5511999999999' // trocar pelo seu número
+const CALENDLY = 'https://calendly.com' // trocar pelo seu link após criar conta em calendly.com
 
 const PLAN_SUPPORT = {
   free:       { label: 'Comunidade',  color: '#94a3b8', sla: null,       dedicated: false, onboarding: false },
