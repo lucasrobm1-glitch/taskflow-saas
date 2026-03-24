@@ -41,32 +41,16 @@ router.post('/register', async (req, res) => {
     user.tenant = tenant._id;
     await user.save();
 
-    const verifyLink = `${process.env.CLIENT_URL?.split(',')[1] || process.env.CLIENT_URL}/verify-email?token=${verifyToken}`;
-    try {
-      await mailer.sendMail({
-        from: `"TaskFlow" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: 'Confirme seu email - TaskFlow',
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#1e1e3a;border-radius:12px;color:#e2e8f0">
-            <div style="text-align:center;margin-bottom:24px">
-              <div style="font-size:32px">⚡</div>
-              <h2 style="color:#e2e8f0;margin:8px 0">Confirme seu email</h2>
-            </div>
-            <p style="color:#94a3b8">Olá <strong style="color:#e2e8f0">${name}</strong>, clique no botão abaixo para ativar sua conta no TaskFlow.</p>
-            <div style="text-align:center;margin:32px 0">
-              <a href="${verifyLink}" style="background:#6366f1;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Confirmar email</a>
-            </div>
-            <p style="color:#64748b;font-size:12px;text-align:center">Se você não criou uma conta, ignore este email.</p>
-          </div>
-        `
-      })
-      console.log('Email de verificação enviado para:', email)
-    } catch (mailErr) {
-      console.error('Erro ao enviar email:', mailErr.message)
-    }
-
+    // Responde imediatamente, envia email em background
     res.status(201).json({ message: 'Conta criada! Verifique seu email para ativar.' });
+
+    const verifyLink = `${process.env.CLIENT_URL?.split(',')[1] || process.env.CLIENT_URL}/verify-email?token=${verifyToken}`;
+    mailer.sendMail({
+      from: `"TaskFlow" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Confirme seu email - TaskFlow',
+      html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#1e1e3a;border-radius:12px;color:#e2e8f0"><div style="text-align:center;margin-bottom:24px"><div style="font-size:32px">⚡</div><h2 style="color:#e2e8f0;margin:8px 0">Confirme seu email</h2></div><p style="color:#94a3b8">Olá <strong style="color:#e2e8f0">${name}</strong>, clique no botão abaixo para ativar sua conta no TaskFlow.</p><div style="text-align:center;margin:32px 0"><a href="${verifyLink}" style="background:#6366f1;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Confirmar email</a></div><p style="color:#64748b;font-size:12px;text-align:center">Se você não criou uma conta, ignore este email.</p></div>`
+    }).then(() => console.log('Email enviado para:', email)).catch(e => console.error('Erro email:', e.message))
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -104,14 +88,15 @@ router.post('/resend-verification', async (req, res) => {
     user.emailVerifyToken = verifyToken
     await user.save()
 
+    res.json({ message: 'Email de verificação reenviado!' })
+
     const verifyLink = `${process.env.CLIENT_URL?.split(',')[1] || process.env.CLIENT_URL}/verify-email?token=${verifyToken}`
-    await mailer.sendMail({
+    mailer.sendMail({
       from: `"TaskFlow" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Confirme seu email - TaskFlow',
       html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#1e1e3a;border-radius:12px;color:#e2e8f0"><div style="text-align:center;margin-bottom:24px"><div style="font-size:32px">⚡</div><h2 style="color:#e2e8f0;margin:8px 0">Confirme seu email</h2></div><p style="color:#94a3b8">Clique no botão abaixo para ativar sua conta no TaskFlow.</p><div style="text-align:center;margin:32px 0"><a href="${verifyLink}" style="background:#6366f1;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Confirmar email</a></div><p style="color:#64748b;font-size:12px;text-align:center">Se você não criou uma conta, ignore este email.</p></div>`
-    })
-    res.json({ message: 'Email de verificação reenviado!' })
+    }).then(() => console.log('Reenvio enviado para:', email)).catch(e => console.error('Erro reenvio:', e.message))
   } catch (err) {
     res.status(500).json({ message: err.message })
   }
