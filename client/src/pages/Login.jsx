@@ -8,7 +8,28 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [ssoAvailable, setSsoAvailable] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendMsg, setResendMsg] = useState('')
+  const [showResend, setShowResend] = useState(false)
   const navigate = useNavigate()
+
+  const handleResend = async () => {
+    setResendLoading(true)
+    try {
+      const res = await fetch(`${API}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email })
+      })
+      const data = await res.json()
+      setResendMsg(data.message)
+      setShowResend(false)
+    } catch {
+      setResendMsg('Erro ao reenviar. Tente novamente.')
+    } finally {
+      setResendLoading(false)
+    }
+  }
 
   useEffect(() => {
     fetch(`${API}/api/sso/status`).then(r => r.json()).then(d => setSsoAvailable(d.google)).catch(() => {})
@@ -25,7 +46,10 @@ export default function Login() {
         body: JSON.stringify(form)
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message)
+      if (!res.ok) {
+        if (data.message?.includes('Confirme seu email')) setShowResend(true)
+        throw new Error(data.message)
+      }
       localStorage.setItem('token', data.token)
       window.location.href = '/'
     } catch (err) {
@@ -49,6 +73,19 @@ export default function Login() {
         {error && (
           <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#f87171', fontSize: 14 }}>
             {error}
+            {showResend && (
+              <div style={{ marginTop: 8 }}>
+                <button onClick={handleResend} disabled={resendLoading}
+                  style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 14, padding: 0, textDecoration: 'underline' }}>
+                  {resendLoading ? 'Enviando...' : 'Reenviar email de verificação'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        {resendMsg && (
+          <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#34d399', fontSize: 14 }}>
+            {resendMsg}
           </div>
         )}
 
