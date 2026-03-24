@@ -7,28 +7,6 @@ export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '', companyName: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
-  const [resendEmail, setResendEmail] = useState('')
-  const [resendMsg, setResendMsg] = useState('')
-  const [resendLoading, setResendLoading] = useState(false)
-
-  const handleResend = async () => {
-    setResendLoading(true)
-    try {
-      const res = await fetch(`${API}/api/auth/resend-verification`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: resendEmail })
-      })
-      const data = await res.json()
-      setResendMsg(data.message)
-      setError('')
-    } catch {
-      setResendMsg('Erro ao reenviar. Tente novamente.')
-    } finally {
-      setResendLoading(false)
-    }
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -41,15 +19,10 @@ export default function Register() {
         body: JSON.stringify(form)
       })
       const data = await res.json()
-      if (!res.ok) {
-        if (data.message === 'Email já cadastrado') setResendEmail(form.email)
-        throw new Error(data.message)
-      }
+      if (!res.ok) throw new Error(data.message)
       if (data.token) {
         localStorage.setItem('token', data.token)
         window.location.href = '/'
-      } else {
-        setSuccess(true)
       }
     } catch (err) {
       setError(err.message || 'Erro ao criar conta')
@@ -59,24 +32,6 @@ export default function Register() {
   }
 
   const inp = { width: '100%', padding: '10px 12px', background: '#16213e', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e2e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }
-
-  if (success) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0f1a' }}>
-        <div style={{ width: '100%', maxWidth: 420, padding: 24, textAlign: 'center' }}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>📧</div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e2e8f0', marginBottom: 8 }}>Verifique seu email</h2>
-          <p style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.6 }}>
-            Enviamos um link de confirmação para <span style={{ color: '#a5b4fc' }}>{form.email}</span>.<br />
-            Clique no link para ativar sua conta.
-          </p>
-          <p style={{ color: '#64748b', fontSize: 13, marginTop: 24 }}>
-            Já confirmou? <Link to="/login" style={{ color: '#6366f1', textDecoration: 'none' }}>Entrar</Link>
-          </p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0f1a' }}>
@@ -90,20 +45,6 @@ export default function Register() {
         {error && (
           <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#f87171', fontSize: 14 }}>
             {error}
-            {resendEmail && !resendMsg && (
-              <div style={{ marginTop: 8 }}>
-                <span style={{ color: '#94a3b8' }}>Não verificou o email? </span>
-                <button onClick={handleResend} disabled={resendLoading}
-                  style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 14, padding: 0, textDecoration: 'underline' }}>
-                  {resendLoading ? 'Enviando...' : 'Reenviar verificação'}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-        {resendMsg && (
-          <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#34d399', fontSize: 14 }}>
-            {resendMsg}
           </div>
         )}
 
