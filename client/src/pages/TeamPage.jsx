@@ -1,5 +1,4 @@
-﻿// v2
-import React, { useState, useEffect } from "react"
+﻿import React, { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext.jsx"
 
 const ROLE_COLORS = { owner: "#f59e0b", admin: "#6366f1", member: "#10b981", viewer: "#94a3b8" }
