@@ -82,10 +82,6 @@ function Layout() {
           <NavLink to="/settings/billing" style={nav} onClick={closeSidebar}>💳 Plano & Billing</NavLink>
           <NavLink to="/support" style={nav} onClick={closeSidebar}>🎧 Suporte</NavLink>
           <NavLink to="/settings" style={nav} onClick={closeSidebar}>⚙️ Configuracoes</NavLink>
-          <button onClick={toggle}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 14, width: '100%' }}>
-            {dark ? '☀️ Modo claro' : '🌙 Modo escuro'}
-          </button>
           <button onClick={() => { logout(); navigate('/login') }}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 14, width: '100%' }}>
             🚪 Sair
