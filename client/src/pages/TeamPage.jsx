@@ -3,9 +3,11 @@ import { useAuth } from "../context/AuthContext.jsx"
 
 const ROLE_COLORS = { owner: "#f59e0b", admin: "#6366f1", member: "#10b981", viewer: "#94a3b8" }
 
+const API = import.meta.env.VITE_API_URL || ''
+
 function apiFetch(path, opts) {
   const token = localStorage.getItem("token")
-  return fetch(path, { method: (opts && opts.method) || "GET", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: opts && opts.body }).then(function(r) { return r.json() })
+  return fetch(API + path, { method: (opts && opts.method) || "GET", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: opts && opts.body }).then(function(r) { return r.json() })
 }
 
 export default function TeamPage() {
