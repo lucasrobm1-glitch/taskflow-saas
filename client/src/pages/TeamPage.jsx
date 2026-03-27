@@ -15,6 +15,8 @@ export default function TeamPage() {
   const [members, setMembers] = useState([])
   const [showInvite, setShowInvite] = useState(false)
   const [email, setEmail] = useState("")
+  const [memberName, setMemberName] = useState("")
+  const [password, setPassword] = useState("")
   const [role, setRole] = useState("member")
   const [msg, setMsg] = useState("")
 
@@ -24,16 +26,18 @@ export default function TeamPage() {
 
   function sendInvite(e) {
     e.preventDefault(); setMsg("")
-    apiFetch("/api/teams/invite", { method: "POST", body: JSON.stringify({ email: email, role: role }) })
+    if (!password || password.length < 6) { setMsg("Senha deve ter pelo menos 6 caracteres"); return }
+    apiFetch("/api/teams/invite", { method: "POST", body: JSON.stringify({ email, role, password, name: memberName }) })
       .then(function(data) {
         if (data && data.message) {
           setMsg(data.message)
-          if (data.message === 'Convite enviado com sucesso') {
-            setTimeout(function() { setShowInvite(false); setEmail(""); setMsg("") }, 1500)
+          if (data.message === 'Membro adicionado com sucesso') {
+            if (data.user) setMembers(function(prev) { return [...prev, data.user] })
+            setTimeout(function() { setShowInvite(false); setEmail(""); setMemberName(""); setPassword(""); setMsg("") }, 1500)
           }
         }
       })
-      .catch(function(err) { setMsg("Erro de conexão. Tente novamente.") })
+      .catch(function() { setMsg("Erro de conexão. Tente novamente.") })
   }
 
   function updateRole(userId, newRole) {
@@ -100,17 +104,19 @@ export default function TeamPage() {
     ),
     showInvite && React.createElement("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 } },
       React.createElement("div", { style: { background: "#1e1e3a", border: "1px solid #2a2a4a", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 } },
-        React.createElement("h3", { style: { fontSize: 18, fontWeight: 600, color: "#e2e8f0", marginBottom: 20 } }, "Convidar Membro"),
-        msg && React.createElement("div", { style: { background: msg === 'Convite enviado com sucesso' ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", border: "1px solid " + (msg === 'Convite enviado com sucesso' ? "#10b981" : "#ef4444"), borderRadius: 8, padding: "8px 12px", marginBottom: 12, color: msg === 'Convite enviado com sucesso' ? "#34d399" : "#f87171", fontSize: 13 } }, msg),
+        React.createElement("h3", { style: { fontSize: 18, fontWeight: 600, color: "#e2e8f0", marginBottom: 20 } }, "Adicionar Membro"),
+        msg && React.createElement("div", { style: { background: msg === 'Membro adicionado com sucesso' ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", border: "1px solid " + (msg === 'Membro adicionado com sucesso' ? "#10b981" : "#ef4444"), borderRadius: 8, padding: "8px 12px", marginBottom: 12, color: msg === 'Membro adicionado com sucesso' ? "#34d399" : "#f87171", fontSize: 13 } }, msg),
         React.createElement("form", { onSubmit: sendInvite, style: { display: "flex", flexDirection: "column", gap: 14 } },
+          React.createElement("input", { style: inp, type: "text", placeholder: "Nome (opcional)", value: memberName, onChange: function(e) { setMemberName(e.target.value) } }),
           React.createElement("input", { style: inp, type: "email", placeholder: "email@exemplo.com", value: email, onChange: function(e) { setEmail(e.target.value) }, required: true }),
+          React.createElement("input", { style: inp, type: "password", placeholder: "Senha (mín. 6 caracteres)", value: password, onChange: function(e) { setPassword(e.target.value) }, required: true }),
           React.createElement("select", { style: inp, value: role, onChange: function(e) { setRole(e.target.value) } },
             React.createElement("option", { value: "admin" }, "Admin"),
             React.createElement("option", { value: "member" }, "Membro"),
             React.createElement("option", { value: "viewer" }, "Visualizador")
           ),
           React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
-            React.createElement("button", { type: "button", onClick: function() { setShowInvite(false) }, style: { padding: "8px 16px", background: "transparent", border: "1px solid #2a2a4a", borderRadius: 8, color: "#94a3b8", cursor: "pointer" } }, "Cancelar"),
+            React.createElement("button", { type: "button", onClick: function() { setShowInvite(false); setMemberName(""); setPassword(""); setMsg("") }, style: { padding: "8px 16px", background: "transparent", border: "1px solid #2a2a4a", borderRadius: 8, color: "#94a3b8", cursor: "pointer" } }, "Cancelar"),
             React.createElement("button", { type: "submit", style: { padding: "8px 16px", background: "#6366f1", border: "none", borderRadius: 8, color: "white", fontWeight: 600, cursor: "pointer" } }, "Enviar")
           )
         )

@@ -16,24 +16,40 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Convidar membro (envia email)
+// Adicionar membro diretamente (email + senha + função)
 router.post('/invite', auth, requireRole('owner', 'admin'), checkMemberLimit, async (req, res) => {
   try {
-    const { email, role } = req.body;
+    const { email, role, password, name } = req.body;
+
+    if (!email || !password) return res.status(400).json({ message: 'Email e senha são obrigatórios' });
+
     const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ message: 'Usuário já cadastrado' });
+    if (existing) {
+      // Se já existe mas é de outro tenant, associa ao tenant atual
+      if (existing.tenant && existing.tenant.toString() !== req.tenant._id.toString()) {
+        return res.status(400).json({ message: 'Este email já está em uso em outro workspace' });
+      }
+      if (existing.tenant && existing.tenant.toString() === req.tenant._id.toString()) {
+        return res.status(400).json({ message: 'Este usuário já é membro da equipe' });
+      }
+    }
 
-    const clientUrl = process.env.CLIENT_URL?.split(',').map(s => s.trim()).find(u => u.startsWith('https')) || process.env.CLIENT_URL;
-    const inviteLink = `${clientUrl}/invite?tenant=${req.tenant._id}&email=${encodeURIComponent(email)}&role=${role}`;
+    const memberName = name || email.split('@')[0];
+    const newUser = new User({
+      name: memberName,
+      email,
+      password,
+      role: role || 'member',
+      tenant: req.tenant._id,
+      emailVerified: true,
+      isActive: true
+    });
+    await newUser.save();
 
-    res.json({ message: 'Convite enviado com sucesso' });
+    const userObj = newUser.toObject();
+    delete userObj.password;
 
-    resend.emails.send({
-      from: 'TaskFlow <onboarding@resend.dev>',
-      to: email,
-      subject: `Convite para ${req.tenant.name} - TaskFlow`,
-      html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#1e1e3a;border-radius:12px;color:#e2e8f0"><div style="text-align:center;margin-bottom:24px"><div style="font-size:32px">⚡</div><h2 style="color:#e2e8f0;margin:8px 0">Você foi convidado!</h2></div><p style="color:#94a3b8">Você foi convidado para participar de <strong style="color:#e2e8f0">${req.tenant.name}</strong> no TaskFlow.</p><div style="text-align:center;margin:32px 0"><a href="${inviteLink}" style="background:#6366f1;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Aceitar convite</a></div><p style="color:#64748b;font-size:12px;text-align:center">Se você não esperava este convite, ignore este email.</p></div>`
-    }).then(() => console.log('Convite enviado para:', email)).catch(e => console.error('Resend erro convite:', e.message))
+    res.status(201).json({ message: 'Membro adicionado com sucesso', user: userObj });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
