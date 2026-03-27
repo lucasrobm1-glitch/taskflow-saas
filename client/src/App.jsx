@@ -4,6 +4,8 @@ import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import InvitePage from './pages/InvitePage.jsx'
 import VerifySuccess from './pages/VerifySuccess.jsx'
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx'
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import { SocketProvider } from './context/SocketContext.jsx'
 import { NotificationProvider } from './context/NotificationContext.jsx'
@@ -11,6 +13,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
 import FloatingChat from './components/FloatingChat.jsx'
 import GlobalSearch from './components/GlobalSearch.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 
 const API = import.meta.env.VITE_API_URL || ''
 
@@ -124,34 +127,38 @@ function PrivateRoute({ children }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ThemeProvider>
-          <SocketProvider>
-            <NotificationProvider>
-              <React.Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#6366f1', background: '#0f0f1a' }}>Carregando...</div>}>
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/invite" element={<InvitePage />} />
-                  <Route path="/verify-success" element={<VerifySuccess />} />
-                  <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-                    <Route index element={<Dashboard />} />
-                    <Route path="projects/:projectId/board" element={<KanbanBoard />} />
-                    <Route path="projects/:projectId/sprints" element={<SprintPage />} />
-                    <Route path="projects/:projectId/reports" element={<ReportsPage />} />
-                    <Route path="team" element={<TeamPage />} />
-                    <Route path="settings" element={<SettingsPage />} />
-                    <Route path="settings/billing" element={<BillingPage />} />
-                    <Route path="support" element={<SupportPage />} />
-                    <Route path="*" element={<NotFoundPage />} />
-                  </Route>
-                </Routes>
-              </React.Suspense>
-            </NotificationProvider>
-          </SocketProvider>
-        </ThemeProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <ThemeProvider>
+            <SocketProvider>
+              <NotificationProvider>
+                <React.Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#6366f1', background: '#0f0f1a' }}>Carregando...</div>}>
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/invite" element={<InvitePage />} />
+                    <Route path="/verify-success" element={<VerifySuccess />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+                      <Route index element={<Dashboard />} />
+                      <Route path="projects/:projectId/board" element={<KanbanBoard />} />
+                      <Route path="projects/:projectId/sprints" element={<SprintPage />} />
+                      <Route path="projects/:projectId/reports" element={<ReportsPage />} />
+                      <Route path="team" element={<TeamPage />} />
+                      <Route path="settings" element={<SettingsPage />} />
+                      <Route path="settings/billing" element={<BillingPage />} />
+                      <Route path="support" element={<SupportPage />} />
+                      <Route path="*" element={<NotFoundPage />} />
+                    </Route>
+                  </Routes>
+                </React.Suspense>
+              </NotificationProvider>
+            </SocketProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }

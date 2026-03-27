@@ -3,9 +3,15 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
 const mongoose = require('mongoose');
-
 const passport = require('passport');
+
+const logger = require('./utils/logger');
+const { errorHandler } = require('./middleware/errorHandler');
+const { apiLimiter } = require('./middleware/rateLimiter');
+
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const projectRoutes = require('./routes/projects');
@@ -35,13 +41,28 @@ const corsOptions = {
 };
 
 const io = new Server(server, { cors: corsOptions });
+
+// Segurança
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false // gerenciado pelo frontend
+}));
 app.use(cors(corsOptions));
 
-// Stripe webhook precisa do raw body
+// Logging HTTP
+app.use(morgan('combined', {
+  stream: { write: (msg) => logger.info(msg.trim()) }
+}));
+
+// Stripe webhook precisa do raw body ANTES do express.json()
 app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(passport.initialize());
+
+// Rate limiting global
+app.use('/api', apiLimiter);
 
 // Rotas
 app.use('/api/auth', authRoutes);
@@ -57,20 +78,33 @@ app.use('/api/sso', ssoRoutes);
 app.use('/api/messages', messageRoutes);
 
 let dbConnected = false;
-app.get('/api/health', (req, res) => res.json({ status: 'ok', db: dbConnected }));
+app.get('/api/health', (req, res) => res.json({
+  status: 'ok',
+  db: dbConnected,
+  uptime: process.uptime(),
+  timestamp: new Date().toISOString()
+}));
+
+// 404 handler
+app.use((req, res) => res.status(404).json({ message: 'Rota não encontrada' }));
+
+// Error handler centralizado (deve ser o último middleware)
+app.use(errorHandler);
 
 setupSocket(io);
 
-// Sobe o servidor imediatamente para o health check do Railway passar
+// Sobe o servidor imediatamente para health checks passarem
 server.listen(process.env.PORT || 5000, () => {
-  console.log(`Servidor rodando na porta ${process.env.PORT || 5000}`);
+  logger.info(`Servidor rodando na porta ${process.env.PORT || 5000}`, {
+    env: process.env.NODE_ENV || 'development'
+  });
 });
 
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     dbConnected = true;
-    console.log('MongoDB conectado');
+    logger.info('MongoDB conectado');
   })
-  .catch(err => console.error('Erro MongoDB:', err));
+  .catch(err => logger.error('Erro MongoDB', { error: err.message }));
 
 module.exports = { app, io };

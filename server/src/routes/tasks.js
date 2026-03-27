@@ -1,155 +1,143 @@
 const router = require('express').Router();
 const Task = require('../models/Task');
 const { auth, requireRole } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
+const { validate, schemas } = require('../middleware/validate');
+const { createLimiter } = require('../middleware/rateLimiter');
+const { auditLog } = require('../middleware/auditLog');
 const { notifyTaskCreated, notifyTaskMoved } = require('../services/slack');
 
-// Listar tarefas de um projeto
-router.get('/', auth, async (req, res) => {
-  try {
-    const { projectId, sprintId, column, assignee, search } = req.query;
-    const filter = { tenant: req.tenant._id };
-    if (projectId) filter.project = projectId;
-    if (sprintId) filter.sprint = sprintId;
-    if (column) filter.column = column;
-    if (assignee) filter.assignees = assignee;
-    if (search) filter.title = { $regex: search, $options: 'i' };
+// Listar tarefas com paginação
+router.get('/', auth, asyncHandler(async (req, res) => {
+  const { projectId, sprintId, column, assignee, search, page = 1, limit = 50 } = req.query;
+  const filter = { tenant: req.tenant._id };
+  if (projectId) filter.project = projectId;
+  if (sprintId) filter.sprint = sprintId;
+  if (column) filter.column = column;
+  if (assignee) filter.assignees = assignee;
+  if (search) filter.title = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
 
-    const tasks = await Task.find(filter)
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const [tasks, total] = await Promise.all([
+    Task.find(filter)
       .populate('assignees', 'name avatar')
       .populate('reporter', 'name avatar')
-      .sort({ order: 1 });
-    res.json(tasks);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+      .sort({ order: 1 })
+      .skip(skip)
+      .limit(parseInt(limit)),
+    Task.countDocuments(filter)
+  ]);
+
+  res.json({ tasks, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+}));
 
 // Criar tarefa
-router.post('/', auth, async (req, res) => {
-  try {
-    const task = new Task({ ...req.body, tenant: req.tenant._id, reporter: req.user._id });
-    await task.save();
-    await task.populate('assignees', 'name avatar');
-    await task.populate('reporter', 'name avatar');
+router.post('/', auth, createLimiter, schemas.createTask, validate, asyncHandler(async (req, res) => {
+  const task = new Task({ ...req.body, tenant: req.tenant._id, reporter: req.user._id });
+  await task.save();
+  await task.populate('assignees', 'name avatar');
+  await task.populate('reporter', 'name avatar');
 
-    // Emitir evento socket
-    req.app.get('io')?.to(`project:${task.project}`).emit('task:created', task);
-    notifyTaskCreated(req.tenant._id, task, req.user.name);
-    res.status(201).json(task);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+  req.app.get('io')?.to(`project:${task.project}`).emit('task:created', task);
+  notifyTaskCreated(req.tenant._id, task, req.user.name).catch(() => {});
+  res.status(201).json(task);
+}));
 
 // Buscar tarefa
-router.get('/:id', auth, async (req, res) => {
-  try {
-    const task = await Task.findOne({ _id: req.params.id, tenant: req.tenant._id })
-      .populate('assignees', 'name avatar email')
-      .populate('reporter', 'name avatar')
-      .populate('sprint', 'name')
-      .populate('comments.user', 'name avatar');
-    if (!task) return res.status(404).json({ message: 'Tarefa não encontrada' });
-    res.json(task);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+router.get('/:id', auth, asyncHandler(async (req, res) => {
+  const task = await Task.findOne({ _id: req.params.id, tenant: req.tenant._id })
+    .populate('assignees', 'name avatar email')
+    .populate('reporter', 'name avatar')
+    .populate('sprint', 'name')
+    .populate('comments.user', 'name avatar');
+  if (!task) return res.status(404).json({ message: 'Tarefa não encontrada' });
+  res.json(task);
+}));
 
-// Atualizar tarefa (inclui mover coluna) - admin/owner podem editar qualquer tarefa
-router.put('/:id', auth, async (req, res) => {
+// Atualizar tarefa
+router.put('/:id', auth, asyncHandler(async (req, res) => {
   const isAdminOrOwner = ['admin', 'owner'].includes(req.user.role);
   const filter = { _id: req.params.id, tenant: req.tenant._id };
-  // membros só editam tarefas onde são reporter ou assignee
   if (!isAdminOrOwner) {
     filter.$or = [{ reporter: req.user._id }, { assignees: req.user._id }];
   }
-  try {
-    const task = await Task.findOneAndUpdate(
-      filter,
-      req.body,
-      { new: true }
-    ).populate('assignees', 'name avatar').populate('reporter', 'name avatar');
-    if (!task) return res.status(404).json({ message: 'Tarefa não encontrada ou sem permissão' });
 
-    req.app.get('io')?.to(`project:${task.project}`).emit('task:updated', task);
-    res.json(task);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+  // Sanitiza campos permitidos
+  const allowed = ['title', 'description', 'priority', 'type', 'tags', 'dueDate', 'estimatedHours', 'assignees', 'sprint', 'progress', 'column', 'order'];
+  const update = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
 
-// Mover tarefa entre colunas (drag & drop)
-router.patch('/:id/move', auth, async (req, res) => {
-  try {
-    const { column, order } = req.body;
-    const task = await Task.findOneAndUpdate(
-      { _id: req.params.id, tenant: req.tenant._id },
-      { column, order, ...(column === 'done' ? { completedAt: new Date() } : { completedAt: null }) },
-      { new: true }
-    ).populate('assignees', 'name avatar');
+  const task = await Task.findOneAndUpdate(filter, update, { new: true, runValidators: true })
+    .populate('assignees', 'name avatar')
+    .populate('reporter', 'name avatar');
+  if (!task) return res.status(404).json({ message: 'Tarefa não encontrada ou sem permissão' });
 
-    req.app.get('io')?.to(`project:${task.project}`).emit('task:moved', { taskId: task._id, column, order });
-    notifyTaskMoved(req.tenant._id, task, column);
-    res.json(task);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+  req.app.get('io')?.to(`project:${task.project}`).emit('task:updated', task);
+  res.json(task);
+}));
+
+// Mover tarefa entre colunas
+router.patch('/:id/move', auth, asyncHandler(async (req, res) => {
+  const { column, order } = req.body;
+  const task = await Task.findOneAndUpdate(
+    { _id: req.params.id, tenant: req.tenant._id },
+    { column, order, ...(column === 'done' ? { completedAt: new Date() } : { completedAt: null }) },
+    { new: true }
+  ).populate('assignees', 'name avatar');
+
+  if (!task) return res.status(404).json({ message: 'Tarefa não encontrada' });
+
+  req.app.get('io')?.to(`project:${task.project}`).emit('task:moved', { taskId: task._id, column, order });
+  notifyTaskMoved(req.tenant._id, task, column).catch(() => {});
+  res.json(task);
+}));
 
 // Adicionar comentário
-router.post('/:id/comments', auth, async (req, res) => {
-  try {
-    const task = await Task.findOneAndUpdate(
-      { _id: req.params.id, tenant: req.tenant._id },
-      { $push: { comments: { user: req.user._id, text: req.body.text } } },
-      { new: true }
-    ).populate('comments.user', 'name avatar');
-    res.json(task.comments);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+router.post('/:id/comments', auth, schemas.addComment, validate, asyncHandler(async (req, res) => {
+  const task = await Task.findOneAndUpdate(
+    { _id: req.params.id, tenant: req.tenant._id },
+    { $push: { comments: { user: req.user._id, text: req.body.text } } },
+    { new: true }
+  ).populate('comments.user', 'name avatar');
+  if (!task) return res.status(404).json({ message: 'Tarefa não encontrada' });
+
+  req.app.get('io')?.to(`project:${task.project}`).emit('task:commented', { taskId: task._id, comment: task.comments[task.comments.length - 1] });
+  res.json(task.comments);
+}));
 
 // Iniciar time tracking
-router.post('/:id/time/start', auth, async (req, res) => {
-  try {
-    const entry = { user: req.user._id, startTime: new Date(), description: req.body.description || '' };
-    const task = await Task.findOneAndUpdate(
-      { _id: req.params.id, tenant: req.tenant._id },
-      { $push: { timeEntries: entry } },
-      { new: true }
-    );
-    res.json(task.timeEntries[task.timeEntries.length - 1]);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+router.post('/:id/time/start', auth, asyncHandler(async (req, res) => {
+  const entry = { user: req.user._id, startTime: new Date(), description: req.body.description || '' };
+  const task = await Task.findOneAndUpdate(
+    { _id: req.params.id, tenant: req.tenant._id },
+    { $push: { timeEntries: entry } },
+    { new: true }
+  );
+  if (!task) return res.status(404).json({ message: 'Tarefa não encontrada' });
+  res.json(task.timeEntries[task.timeEntries.length - 1]);
+}));
 
 // Parar time tracking
-router.patch('/:id/time/:entryId/stop', auth, async (req, res) => {
-  try {
-    const task = await Task.findOne({ _id: req.params.id, tenant: req.tenant._id });
-    const entry = task.timeEntries.id(req.params.entryId);
-    if (!entry) return res.status(404).json({ message: 'Entrada não encontrada' });
+router.patch('/:id/time/:entryId/stop', auth, asyncHandler(async (req, res) => {
+  const task = await Task.findOne({ _id: req.params.id, tenant: req.tenant._id });
+  if (!task) return res.status(404).json({ message: 'Tarefa não encontrada' });
 
-    entry.endTime = new Date();
-    entry.duration = Math.round((entry.endTime - entry.startTime) / 60000);
-    await task.save();
-    res.json(entry);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+  const entry = task.timeEntries.id(req.params.entryId);
+  if (!entry) return res.status(404).json({ message: 'Entrada não encontrada' });
+  if (entry.endTime) return res.status(400).json({ message: 'Timer já foi parado' });
 
-// Deletar tarefa - somente admin ou owner
-router.delete('/:id', auth, requireRole('admin', 'owner'), async (req, res) => {
-  try {
-    await Task.findOneAndDelete({ _id: req.params.id, tenant: req.tenant._id });
-    res.json({ message: 'Tarefa deletada' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+  entry.endTime = new Date();
+  entry.duration = Math.round((entry.endTime - entry.startTime) / 60000);
+  await task.save();
+  res.json(entry);
+}));
+
+// Deletar tarefa
+router.delete('/:id', auth, requireRole('admin', 'owner'), auditLog, asyncHandler(async (req, res) => {
+  const task = await Task.findOneAndDelete({ _id: req.params.id, tenant: req.tenant._id });
+  if (!task) return res.status(404).json({ message: 'Tarefa não encontrada' });
+
+  req.app.get('io')?.to(`project:${task.project}`).emit('task:deleted', { taskId: task._id });
+  res.json({ message: 'Tarefa deletada' });
+}));
 
 module.exports = router;

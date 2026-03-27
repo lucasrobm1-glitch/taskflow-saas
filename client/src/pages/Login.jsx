@@ -73,7 +73,10 @@ export default function Login() {
             <input type="email" placeholder="seu@email.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required style={inp} />
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 14, color: '#94a3b8' }}>Senha</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 14, color: '#94a3b8' }}>Senha</label>
+              <Link to="/forgot-password" style={{ fontSize: 13, color: '#6366f1', textDecoration: 'none' }}>Esqueceu a senha?</Link>
+            </div>
             <input type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required style={inp} />
           </div>
           <button type="submit" disabled={loading}

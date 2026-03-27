@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import api from '../services/api'
 
-const API = import.meta.env.VITE_API_URL || ''
 const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
@@ -8,37 +8,52 @@ export function AuthProvider({ children }) {
   const [tenant, setTenant] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const fetchMe = useCallback(async () => {
     const token = localStorage.getItem('token')
     if (!token) { setLoading(false); return }
-    fetch(`${API}/api/auth/me`, { headers: { Authorization: 'Bearer ' + token } })
-      .then(r => r.json())
-      .then(d => { setUser(d.user); setTenant(d.tenant) })
-      .catch(() => localStorage.removeItem('token'))
-      .finally(() => setLoading(false))
+    try {
+      const { data } = await api.get('/auth/me')
+      setUser(data.user)
+      setTenant(data.tenant)
+    } catch {
+      localStorage.removeItem('token')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
+  useEffect(() => { fetchMe() }, [fetchMe])
+
   const login = async (email, password) => {
-    const res = await fetch(`${API}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message)
+    const { data } = await api.post('/auth/login', { email, password })
     localStorage.setItem('token', data.token)
-    setUser(data.user); setTenant(data.tenant)
+    setUser(data.user)
+    setTenant(data.tenant)
     return data
   }
 
   const register = async (name, email, password, companyName) => {
-    const res = await fetch(`${API}/api/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password, companyName }) })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message)
+    const { data } = await api.post('/auth/register', { name, email, password, companyName })
     localStorage.setItem('token', data.token)
-    setUser(data.user); setTenant(data.tenant)
+    setUser(data.user)
+    setTenant(data.tenant)
     return data
   }
 
-  const logout = () => { localStorage.removeItem('token'); setUser(null); setTenant(null) }
+  const logout = () => {
+    localStorage.removeItem('token')
+    setUser(null)
+    setTenant(null)
+  }
 
-  return <AuthContext.Provider value={{ user, tenant, loading, login, register, logout }}>{children}</AuthContext.Provider>
+  const updateUser = (updates) => setUser(prev => ({ ...prev, ...updates }))
+  const updateTenant = (updates) => setTenant(prev => ({ ...prev, ...updates }))
+
+  return (
+    <AuthContext.Provider value={{ user, tenant, loading, login, register, logout, updateUser, updateTenant, refetch: fetchMe }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export const useAuth = () => useContext(AuthContext)
