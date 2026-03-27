@@ -35,12 +35,13 @@ export default function GlobalSearch() {
     const t = setTimeout(async () => {
       setLoading(true)
       try {
-        const [tasks, projects] = await Promise.all([
-          apiFetch(`/api/tasks?search=${encodeURIComponent(query)}`),
+        const [tasksRes, projects] = await Promise.all([
+          apiFetch(`/api/tasks?search=${encodeURIComponent(query)}&limit=10`),
           apiFetch('/api/projects')
         ])
+        const tasksArr = Array.isArray(tasksRes) ? tasksRes : (tasksRes?.tasks || [])
         const filteredProjects = Array.isArray(projects) ? projects.filter(p => p.name.toLowerCase().includes(query.toLowerCase())) : []
-        setResults({ tasks: Array.isArray(tasks) ? tasks.slice(0, 5) : [], projects: filteredProjects.slice(0, 3) })
+        setResults({ tasks: tasksArr.slice(0, 5), projects: filteredProjects.slice(0, 3) })
       } catch { setResults({ tasks: [], projects: [] }) }
       setLoading(false)
     }, 300)

@@ -39,7 +39,10 @@ export default function KanbanBoard() {
 
   useEffect(() => {
     api(`/api/projects/${projectId}`).then(d => d._id && setProject(d))
-    api(`/api/tasks?projectId=${projectId}`).then(d => Array.isArray(d) && setTasks(d))
+    api(`/api/tasks?projectId=${projectId}&limit=500`).then(d => {
+      if (Array.isArray(d)) setTasks(d)
+      else if (d?.tasks) setTasks(d.tasks)
+    })
     api('/api/teams').then(d => Array.isArray(d) && setTenantMembers(d))
   }, [projectId])
 
