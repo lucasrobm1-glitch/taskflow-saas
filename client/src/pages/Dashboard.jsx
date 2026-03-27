@@ -21,6 +21,8 @@ export default function Dashboard() {
   const [form, setForm] = useState({ name: '', description: '', color: '#6366f1', icon: '📋' })
   const [members, setMembers] = useState(0)
   const [msg, setMsg] = useState('')
+  const [editProject, setEditProject] = useState(null)
+  const [editForm, setEditForm] = useState({ name: '', description: '', color: '#6366f1', icon: '📋' })
 
   useEffect(() => {
     api('/api/projects').then(d => Array.isArray(d) && setProjects(d))
@@ -32,6 +34,17 @@ export default function Dashboard() {
       await api(`/api/projects/${id}`, { method: 'DELETE' })
       setProjects(prev => prev.filter(p => p._id !== id))
     } catch { setMsg('Erro ao deletar projeto') }
+  }
+
+  const saveEditProject = async (e) => {
+    e.preventDefault()
+    try {
+      const data = await api(`/api/projects/${editProject._id}`, { method: 'PUT', body: JSON.stringify(editForm) })
+      if (data._id) {
+        setProjects(prev => prev.map(p => p._id === data._id ? data : p))
+        setEditProject(null)
+      }
+    } catch { setMsg('Erro ao editar projeto') }
   }
 
   const createProject = async (e) => {
@@ -98,13 +111,22 @@ export default function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span onClick={() => navigate(`/projects/${p._id}/board`)} style={{ fontSize: 11, background: 'rgba(99,102,241,0.15)', color: '#818cf8', padding: '2px 8px', borderRadius: 999 }}>{p.status}</span>
               {isOwner && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(p) }}
-                  title="Deletar projeto"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', fontSize: 16, padding: '2px 6px', borderRadius: 6, lineHeight: 1 }}
-                  onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                  onMouseLeave={e => e.currentTarget.style.color = '#475569'}
-                >🗑️</button>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEditProject(p); setEditForm({ name: p.name, description: p.description || '', color: p.color || '#6366f1', icon: p.icon || '📋' }) }}
+                    title="Editar projeto"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', fontSize: 15, padding: '2px 6px', borderRadius: 6 }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#6366f1'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#475569'}
+                  >✏️</button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(p) }}
+                    title="Deletar projeto"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', fontSize: 16, padding: '2px 6px', borderRadius: 6, lineHeight: 1 }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#475569'}
+                  >🗑️</button>
+                </div>
               )}
             </div>
           </div>
@@ -149,6 +171,41 @@ export default function Dashboard() {
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
                 <button type="button" onClick={() => setShowModal(false)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #2a2a4a', borderRadius: 8, color: '#94a3b8', cursor: 'pointer' }}>Cancelar</button>
                 <button type="submit" style={{ padding: '8px 16px', background: '#6366f1', border: 'none', borderRadius: 8, color: 'white', fontWeight: 600, cursor: 'pointer' }}>Criar Projeto</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {editProject && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#1e1e3a', border: '1px solid #2a2a4a', borderRadius: 16, padding: 24, width: '100%', maxWidth: 480 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: '#e2e8f0', marginBottom: 20 }}>Editar Projeto</h3>
+            <form onSubmit={saveEditProject} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <input placeholder="Nome do projeto" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} required
+                style={{ padding: '10px 12px', background: '#16213e', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e2e8f0', fontSize: 14, outline: 'none' }} />
+              <textarea placeholder="Descrição opcional" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} rows={2}
+                style={{ padding: '10px 12px', background: '#16213e', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e2e8f0', fontSize: 14, outline: 'none', resize: 'vertical' }} />
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontSize: 13, color: '#94a3b8' }}>Ícone</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {ICONS.map(icon => (
+                    <button key={icon} type="button" onClick={() => setEditForm({ ...editForm, icon })}
+                      style={{ width: 36, height: 36, borderRadius: 8, border: `2px solid ${editForm.icon === icon ? '#6366f1' : '#2a2a4a'}`, background: 'transparent', cursor: 'pointer', fontSize: 18 }}>{icon}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontSize: 13, color: '#94a3b8' }}>Cor</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {COLORS.map(color => (
+                    <button key={color} type="button" onClick={() => setEditForm({ ...editForm, color })}
+                      style={{ width: 28, height: 28, borderRadius: '50%', background: color, border: `3px solid ${editForm.color === color ? 'white' : 'transparent'}`, cursor: 'pointer' }} />
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                <button type="button" onClick={() => setEditProject(null)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #2a2a4a', borderRadius: 8, color: '#94a3b8', cursor: 'pointer' }}>Cancelar</button>
+                <button type="submit" style={{ padding: '8px 16px', background: '#6366f1', border: 'none', borderRadius: 8, color: 'white', fontWeight: 600, cursor: 'pointer' }}>Salvar</button>
               </div>
             </form>
           </div>
