@@ -25,9 +25,11 @@ export default function TeamPage() {
 
   useEffect(() => {
     if (!socket) return
+    socket.emit('online:request')
+    socket.on('online:list', (ids) => setOnlineUsers(new Set(ids)))
     socket.on('user:online', ({ userId }) => setOnlineUsers(prev => new Set([...prev, userId])))
     socket.on('user:offline', ({ userId }) => setOnlineUsers(prev => { const s = new Set(prev); s.delete(userId); return s }))
-    return () => { socket.off('user:online'); socket.off('user:offline') }
+    return () => { socket.off('online:list'); socket.off('user:online'); socket.off('user:offline') }
   }, [socket])
   const [members, setMembers] = useState([])
   const [showInvite, setShowInvite] = useState(false)

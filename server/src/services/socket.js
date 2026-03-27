@@ -27,6 +27,20 @@ const setupSocket = (io) => {
     // Broadcast online para o tenant
     socket.to(`tenant:${socket.tenant._id}`).emit('user:online', { userId: socket.user._id.toString() });
 
+    // Responde quem está online quando solicitado
+    socket.on('online:request', () => {
+      const tenantRoom = `tenant:${socket.tenant._id}`;
+      const sockets = io.sockets.adapter.rooms.get(tenantRoom);
+      const onlineIds = [];
+      if (sockets) {
+        for (const sid of sockets) {
+          const s = io.sockets.sockets.get(sid);
+          if (s?.user) onlineIds.push(s.user._id.toString());
+        }
+      }
+      socket.emit('online:list', onlineIds);
+    });
+
     // Entrar em sala do projeto
     socket.on('join:project', (projectId) => {
       socket.join(`project:${projectId}`);
