@@ -25,8 +25,15 @@ export default function TeamPage() {
   function sendInvite(e) {
     e.preventDefault(); setMsg("")
     apiFetch("/api/teams/invite", { method: "POST", body: JSON.stringify({ email: email, role: role }) })
-      .then(function(data) { if (data && data.message) { setMsg(data.message); return }; setShowInvite(false); setEmail("") })
-      .catch(function() { setMsg("Erro") })
+      .then(function(data) {
+        if (data && data.message) {
+          setMsg(data.message)
+          if (data.message === 'Convite enviado com sucesso') {
+            setTimeout(function() { setShowInvite(false); setEmail(""); setMsg("") }, 1500)
+          }
+        }
+      })
+      .catch(function(err) { setMsg("Erro de conexão. Tente novamente.") })
   }
 
   function updateRole(userId, newRole) {
@@ -94,7 +101,7 @@ export default function TeamPage() {
     showInvite && React.createElement("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 } },
       React.createElement("div", { style: { background: "#1e1e3a", border: "1px solid #2a2a4a", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 } },
         React.createElement("h3", { style: { fontSize: 18, fontWeight: 600, color: "#e2e8f0", marginBottom: 20 } }, "Convidar Membro"),
-        msg && React.createElement("div", { style: { background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: 8, padding: "8px 12px", marginBottom: 12, color: "#f87171", fontSize: 13 } }, msg),
+        msg && React.createElement("div", { style: { background: msg === 'Convite enviado com sucesso' ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", border: "1px solid " + (msg === 'Convite enviado com sucesso' ? "#10b981" : "#ef4444"), borderRadius: 8, padding: "8px 12px", marginBottom: 12, color: msg === 'Convite enviado com sucesso' ? "#34d399" : "#f87171", fontSize: 13 } }, msg),
         React.createElement("form", { onSubmit: sendInvite, style: { display: "flex", flexDirection: "column", gap: 14 } },
           React.createElement("input", { style: inp, type: "email", placeholder: "email@exemplo.com", value: email, onChange: function(e) { setEmail(e.target.value) }, required: true }),
           React.createElement("select", { style: inp, value: role, onChange: function(e) { setRole(e.target.value) } },
