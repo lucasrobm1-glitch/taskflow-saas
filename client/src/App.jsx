@@ -17,6 +17,7 @@ function Layout() {
   const { user, tenant, logout } = useAuth()
   const navigate = useNavigate()
   const [projects, setProjects] = useState([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -31,9 +32,20 @@ function Layout() {
     background: isActive ? 'rgba(99,102,241,0.15)' : 'transparent'
   })
 
+  const closeSidebar = () => setSidebarOpen(false)
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <aside style={{ width: 240, background: '#1a1a2e', borderRight: '1px solid #2a2a4a', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      {/* Mobile header */}
+      <div className="mobile-header">
+        <button className="hamburger" onClick={() => setSidebarOpen(o => !o)}>☰</button>
+        <div style={{ fontWeight: 700, fontSize: 15, color: '#e2e8f0' }}>{tenant?.name || 'TaskFlow'}</div>
+      </div>
+
+      {/* Overlay mobile */}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar} />}
+
+      <aside className={`sidebar${sidebarOpen ? ' open' : ''}`} style={{ width: 240, background: '#1a1a2e', borderRight: '1px solid #2a2a4a', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '20px 16px', borderBottom: '1px solid #2a2a4a', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 32, height: 32, background: '#6366f1', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⚡</div>
           <div>
@@ -43,17 +55,17 @@ function Layout() {
         </div>
 
         <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
-          <NavLink to="/" end style={nav}>🏠 Dashboard</NavLink>
-          <NavLink to="/team" style={nav}>👥 Equipe</NavLink>
-          <NavLink to="/chat" style={nav}>💬 Chat</NavLink>
+          <NavLink to="/" end style={nav} onClick={closeSidebar}>🏠 Dashboard</NavLink>
+          <NavLink to="/team" style={nav} onClick={closeSidebar}>👥 Equipe</NavLink>
+          <NavLink to="/chat" style={nav} onClick={closeSidebar}>💬 Chat</NavLink>
           <div style={{ marginTop: 16, padding: '6px 12px', fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Projetos</div>
           {projects.map(p => (
             <div key={String(p._id)}>
-              <NavLink to={'/projects/' + String(p._id) + '/board'} style={nav}>
+              <NavLink to={'/projects/' + String(p._id) + '/board'} style={nav} onClick={closeSidebar}>
                 <span>{p.icon || '📋'}</span>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
               </NavLink>
-              <NavLink to={'/projects/' + String(p._id) + '/chat'} style={({ isActive }) => ({ ...nav({ isActive }), paddingLeft: 28, fontSize: 13 })}>
+              <NavLink to={'/projects/' + String(p._id) + '/chat'} style={({ isActive }) => ({ ...nav({ isActive }), paddingLeft: 28, fontSize: 13 })} onClick={closeSidebar}>
                 💬 Chat
               </NavLink>
             </div>
@@ -65,9 +77,9 @@ function Layout() {
             <span style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500 }}>Notificações</span>
             <NotificationBell />
           </div>
-          <NavLink to="/settings/billing" style={nav}>💳 Plano & Billing</NavLink>
-          <NavLink to="/support" style={nav}>🎧 Suporte</NavLink>
-          <NavLink to="/settings" style={nav}>⚙️ Configuracoes</NavLink>
+          <NavLink to="/settings/billing" style={nav} onClick={closeSidebar}>💳 Plano & Billing</NavLink>
+          <NavLink to="/support" style={nav} onClick={closeSidebar}>🎧 Suporte</NavLink>
+          <NavLink to="/settings" style={nav} onClick={closeSidebar}>⚙️ Configuracoes</NavLink>
           <button onClick={() => { logout(); navigate('/login') }}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 14, width: '100%' }}>
             🚪 Sair
@@ -83,7 +95,7 @@ function Layout() {
           </div>
         </div>
       </aside>
-      <main style={{ flex: 1, overflow: 'auto', background: '#0f0f1a' }}>
+      <main className="main-content" style={{ flex: 1, overflow: 'auto', background: '#0f0f1a' }}>
         <Outlet />
       </main>
     </div>
