@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import usePageTitle from '../hooks/usePageTitle.js'
+import SkeletonLoader from '../components/SkeletonLoader.jsx'
 
 const API = import.meta.env.VITE_API_URL || ''
 
@@ -16,6 +18,7 @@ const TYPE_ICONS = { task: '✅', bug: '🐛', feature: '✨', improvement: '⚡
 export default function KanbanBoard() {
   const { projectId } = useParams()
   const { user } = useAuth()
+  usePageTitle(project?.name || 'Kanban')
   const isAdminOrOwner = user && ['admin', 'owner'].includes(user.role)
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
@@ -124,7 +127,7 @@ export default function KanbanBoard() {
     } catch { setMsg('Erro ao criar tarefa') }
   }
 
-  if (!project) return <div style={{ padding: 32, color: '#94a3b8' }}>Carregando...</div>
+  if (!project) return <SkeletonLoader rows={4} height={80} />
 
   const inputStyle = { padding: '8px 12px', background: '#16213e', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e2e8f0', fontSize: 14, outline: 'none', width: '100%', boxSizing: 'border-box' }
   const selectStyle = { ...inputStyle }
@@ -192,7 +195,7 @@ export default function KanbanBoard() {
                   <div key={task._id} draggable
                     onDragStart={() => { dragTask.current = task._id }}
                     onClick={() => setSelectedTask(task)}
-                    style={{ background: '#1e1e3a', border: '1px solid #2a2a4a', borderRadius: 8, padding: 12, marginBottom: 8, cursor: 'grab' }}>
+                    style={{ background: '#1e1e3a', border: `1px solid ${task.dueDate && new Date(task.dueDate) < new Date() && task.column !== 'done' ? '#ef444440' : '#2a2a4a'}`, borderRadius: 8, padding: 12, marginBottom: 8, cursor: 'grab' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                       <span style={{ fontSize: 13 }}>{TYPE_ICONS[task.type] || '✅'}</span>
                       <span style={{ fontSize: 11, color: PRIORITY_COLORS[task.priority], fontWeight: 600 }}>{PRIORITY_LABELS[task.priority]}</span>
@@ -212,8 +215,8 @@ export default function KanbanBoard() {
                         ))}
                       </div>
                       {task.dueDate && (
-                        <span style={{ fontSize: 11, color: new Date(task.dueDate) < new Date() ? '#ef4444' : '#94a3b8' }}>
-                          📅 {new Date(task.dueDate).toLocaleDateString('pt-BR')}
+                        <span style={{ fontSize: 11, color: new Date(task.dueDate) < new Date() && task.column !== 'done' ? '#ef4444' : '#94a3b8', fontWeight: new Date(task.dueDate) < new Date() && task.column !== 'done' ? 700 : 400 }}>
+                          {new Date(task.dueDate) < new Date() && task.column !== 'done' ? '⚠️' : '📅'} {new Date(task.dueDate).toLocaleDateString('pt-BR')}
                         </span>
                       )}
                     </div>

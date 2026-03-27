@@ -115,3 +115,12 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); }
   color: #e2e8f0; font-size: 22px; padding: 4px;
   display: flex; align-items: center; justify-content: center;
 }
+
+/* ===== RESPONSIVO CONTEÚDO ===== */
+@media (max-width: 768px) {
+  .page-padding { padding: 16px !important; }
+  .grid-2col { grid-template-columns: 1fr !important; }
+  .hide-mobile { display: none !important; }
+  .table-scroll { overflow-x: auto; }
+  .kanban-header { flex-wrap: wrap; gap: 8px; }
+}

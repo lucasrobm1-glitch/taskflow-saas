@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import usePageTitle from '../hooks/usePageTitle.js'
 
 const API = import.meta.env.VITE_API_URL || ''
 
@@ -26,6 +27,7 @@ function Bar({ label, value, max, color }) {
 
 export default function ReportsPage() {
   const { projectId } = useParams()
+  usePageTitle('Relatórios')
   const [report, setReport] = useState(null)
   const [sprints, setSprints] = useState([])
   const [selectedSprint, setSelectedSprint] = useState('')
@@ -44,6 +46,21 @@ export default function ReportsPage() {
 
   if (!report) return <div style={{ padding: 32, color: '#94a3b8' }}>Carregando relatórios...</div>
 
+  const exportCSV = () => {
+    const rows = [
+      ['Status', 'Quantidade'],
+      ...Object.entries(report.byStatus || {}).map(([k, v]) => [k, v]),
+      [],
+      ['Prioridade', 'Quantidade'],
+      ...Object.entries(report.byPriority || {}).map(([k, v]) => [k, v]),
+    ]
+    const csv = rows.map(r => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'relatorio.csv'; a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const statusEntries = Object.entries(report.byStatus || {})
   const priorityEntries = Object.entries(report.byPriority || {})
   const assigneeEntries = Object.entries(report.byAssignee || {})
@@ -52,7 +69,13 @@ export default function ReportsPage() {
 
   return (
     <div style={{ padding: 32 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: '#e2e8f0', marginBottom: 24 }}>Relatórios</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#e2e8f0' }}>Relatórios</h1>
+        <button onClick={exportCSV}
+          style={{ padding: '7px 14px', background: '#16213e', border: '1px solid #2a2a4a', borderRadius: 8, color: '#94a3b8', cursor: 'pointer', fontSize: 13 }}>
+          ⬇️ Exportar CSV
+        </button>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 32 }}>
         {[

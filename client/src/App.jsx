@@ -7,6 +7,7 @@ import VerifySuccess from './pages/VerifySuccess.jsx'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import { SocketProvider } from './context/SocketContext.jsx'
 import { NotificationProvider } from './context/NotificationContext.jsx'
+import { ThemeProvider, useTheme } from './context/ThemeContext.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
 import FloatingChat from './components/FloatingChat.jsx'
 import GlobalSearch from './components/GlobalSearch.jsx'
@@ -17,6 +18,7 @@ export { useAuth }
 
 function Layout() {
   const { user, tenant, logout } = useAuth()
+  const { dark, toggle } = useTheme()
   const navigate = useNavigate()
   const [projects, setProjects] = useState([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -80,6 +82,10 @@ function Layout() {
           <NavLink to="/settings/billing" style={nav} onClick={closeSidebar}>💳 Plano & Billing</NavLink>
           <NavLink to="/support" style={nav} onClick={closeSidebar}>🎧 Suporte</NavLink>
           <NavLink to="/settings" style={nav} onClick={closeSidebar}>⚙️ Configuracoes</NavLink>
+          <button onClick={toggle}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 14, width: '100%' }}>
+            {dark ? '☀️ Modo claro' : '🌙 Modo escuro'}
+          </button>
           <button onClick={() => { logout(); navigate('/login') }}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 14, width: '100%' }}>
             🚪 Sair
@@ -112,7 +118,7 @@ const TeamPage = React.lazy(() => import('./pages/TeamPage.jsx'))
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage.jsx'))
 const BillingPage = React.lazy(() => import('./pages/BillingPage.jsx'))
 const SupportPage = React.lazy(() => import('./pages/SupportPage.jsx'))
-const ChatPage = React.lazy(() => import('./pages/ChatPage.jsx'))
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage.jsx'))
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -124,30 +130,31 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <SocketProvider>
-          <NotificationProvider>
-            <React.Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#6366f1', background: '#0f0f1a' }}>Carregando...</div>}>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/invite" element={<InvitePage />} />
-                <Route path="/verify-success" element={<VerifySuccess />} />
-                <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="projects/:projectId/board" element={<KanbanBoard />} />
-                  <Route path="projects/:projectId/sprints" element={<SprintPage />} />
-                  <Route path="projects/:projectId/reports" element={<ReportsPage />} />
-                  <Route path="team" element={<TeamPage />} />
-                  <Route path="chat" element={<ChatPage />} />
-                  <Route path="projects/:projectId/chat" element={<ChatPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                  <Route path="settings/billing" element={<BillingPage />} />
-                  <Route path="support" element={<SupportPage />} />
-                </Route>
-              </Routes>
-            </React.Suspense>
-          </NotificationProvider>
-        </SocketProvider>
+        <ThemeProvider>
+          <SocketProvider>
+            <NotificationProvider>
+              <React.Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#6366f1', background: '#0f0f1a' }}>Carregando...</div>}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/invite" element={<InvitePage />} />
+                  <Route path="/verify-success" element={<VerifySuccess />} />
+                  <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="projects/:projectId/board" element={<KanbanBoard />} />
+                    <Route path="projects/:projectId/sprints" element={<SprintPage />} />
+                    <Route path="projects/:projectId/reports" element={<ReportsPage />} />
+                    <Route path="team" element={<TeamPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                    <Route path="settings/billing" element={<BillingPage />} />
+                    <Route path="support" element={<SupportPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Route>
+                </Routes>
+              </React.Suspense>
+            </NotificationProvider>
+          </SocketProvider>
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   )

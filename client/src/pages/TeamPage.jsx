@@ -1,5 +1,7 @@
 ﻿import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useSocket } from '../context/SocketContext.jsx'
+import usePageTitle from '../hooks/usePageTitle.js'
 
 const ROLE_COLORS = { owner: '#f59e0b', admin: '#6366f1', member: '#10b981', viewer: '#94a3b8' }
 const API = import.meta.env.VITE_API_URL || ''
@@ -17,6 +19,16 @@ const inp = { padding: '8px 12px', background: '#16213e', border: '1px solid #2a
 
 export default function TeamPage() {
   const { user } = useAuth()
+  const socket = useSocket()
+  const [onlineUsers, setOnlineUsers] = useState(new Set())
+  usePageTitle('Equipe')
+
+  useEffect(() => {
+    if (!socket) return
+    socket.on('user:online', ({ userId }) => setOnlineUsers(prev => new Set([...prev, userId])))
+    socket.on('user:offline', ({ userId }) => setOnlineUsers(prev => { const s = new Set(prev); s.delete(userId); return s }))
+    return () => { socket.off('user:online'); socket.off('user:offline') }
+  }, [socket])
   const [members, setMembers] = useState([])
   const [showInvite, setShowInvite] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'member' })
@@ -89,8 +101,11 @@ export default function TeamPage() {
               <tr key={member._id} style={{ borderBottom: '1px solid #2a2a4a' }}>
                 <td style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'white', fontWeight: 700 }}>
-                      {member.name?.[0]?.toUpperCase() || '?'}
+                    <div style={{ position: 'relative' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'white', fontWeight: 700 }}>
+                        {member.name?.[0]?.toUpperCase() || '?'}
+                      </div>
+                      <div style={{ position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: '50%', background: onlineUsers.has(member._id) ? '#10b981' : '#475569', border: '2px solid #1e1e3a' }} />
                     </div>
                     <span style={{ fontSize: 14, color: '#e2e8f0' }}>{member.name}</span>
                     {user?._id === member._id && <span style={{ fontSize: 11, color: '#94a3b8' }}>(você)</span>}

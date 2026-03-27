@@ -24,6 +24,9 @@ const setupSocket = (io) => {
     // Entrar em sala do tenant (chat geral)
     socket.join(`tenant:${socket.tenant._id}`);
 
+    // Broadcast online para o tenant
+    socket.to(`tenant:${socket.tenant._id}`).emit('user:online', { userId: socket.user._id.toString() });
+
     // Entrar em sala do projeto
     socket.on('join:project', (projectId) => {
       socket.join(`project:${projectId}`);
@@ -64,6 +67,7 @@ const setupSocket = (io) => {
 
     socket.on('disconnect', () => {
       console.log(`Usuário desconectado: ${socket.user.name}`);
+      socket.to(`tenant:${socket.tenant._id}`).emit('user:offline', { userId: socket.user._id.toString() });
     });
   });
 };

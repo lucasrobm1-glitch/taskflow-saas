@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import usePageTitle from '../hooks/usePageTitle.js'
 
 const API = import.meta.env.VITE_API_URL || ''
 
@@ -14,6 +15,7 @@ const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b', '#10b981'
 
 export default function Dashboard() {
   const { user, tenant } = useAuth()
+  usePageTitle('Dashboard')
   const navigate = useNavigate()
   const [projects, setProjects] = useState([])
   const [showModal, setShowModal] = useState(false)
