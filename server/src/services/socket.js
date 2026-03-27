@@ -46,11 +46,13 @@ const setupSocket = (io) => {
     socket.on('chat:message', async ({ text, projectId }) => {
       try {
         const Message = require('../models/Message');
+        const clean = String(text || '').replace(/[<>]/g, '').trim().slice(0, 2000);
+        if (!clean) return;
         const msg = await Message.create({
           tenant: socket.tenant._id,
           project: projectId || null,
           sender: socket.user._id,
-          text: text.trim().slice(0, 2000)
+          text: clean
         });
         const populated = await msg.populate('sender', 'name');
         const room = projectId ? `project:${projectId}` : `tenant:${socket.tenant._id}`;

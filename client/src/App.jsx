@@ -9,6 +9,7 @@ import { SocketProvider } from './context/SocketContext.jsx'
 import { NotificationProvider } from './context/NotificationContext.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
 import FloatingChat from './components/FloatingChat.jsx'
+import GlobalSearch from './components/GlobalSearch.jsx'
 
 const API = import.meta.env.VITE_API_URL || ''
 
@@ -41,6 +42,8 @@ function Layout() {
       <div className="mobile-header">
         <button className="hamburger" onClick={() => setSidebarOpen(o => !o)}>☰</button>
         <div style={{ fontWeight: 700, fontSize: 15, color: '#e2e8f0' }}>{tenant?.name || 'TaskFlow'}</div>
+        <button onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 18 }}>🔍</button>
       </div>
 
       {/* Overlay mobile */}
@@ -96,6 +99,7 @@ function Layout() {
         <Outlet />
       </main>
       <FloatingChat />
+      <GlobalSearch />
     </div>
   )
 }

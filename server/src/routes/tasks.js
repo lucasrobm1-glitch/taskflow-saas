@@ -6,12 +6,13 @@ const { notifyTaskCreated, notifyTaskMoved } = require('../services/slack');
 // Listar tarefas de um projeto
 router.get('/', auth, async (req, res) => {
   try {
-    const { projectId, sprintId, column, assignee } = req.query;
+    const { projectId, sprintId, column, assignee, search } = req.query;
     const filter = { tenant: req.tenant._id };
     if (projectId) filter.project = projectId;
     if (sprintId) filter.sprint = sprintId;
     if (column) filter.column = column;
     if (assignee) filter.assignees = assignee;
+    if (search) filter.title = { $regex: search, $options: 'i' };
 
     const tasks = await Task.find(filter)
       .populate('assignees', 'name avatar')

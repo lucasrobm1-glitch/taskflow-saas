@@ -30,6 +30,7 @@ export default function KanbanBoard() {
   const [tenantMembers, setTenantMembers] = useState([])
   const [filters, setFilters] = useState({ priority: '', assignee: '', search: '' })
   const [newComment, setNewComment] = useState('')
+  const [dragOverColId, setDragOverColId] = useState(null)
   const dragTask = useRef(null)
   const dragOverCol = useRef(null)
 
@@ -76,6 +77,7 @@ export default function KanbanBoard() {
     const taskId = dragTask.current
     if (!taskId) return
     setTasks(prev => prev.map(t => t._id === taskId ? { ...t, column: colId } : t))
+    setDragOverColId(null)
     await api(`/api/tasks/${taskId}/move`, { method: 'PATCH', body: JSON.stringify({ column: colId, order: 0 }) }).catch(() => {})
     dragTask.current = null
   }
@@ -172,7 +174,8 @@ export default function KanbanBoard() {
         <div style={{ display: 'flex', gap: 16, minWidth: 'max-content', height: '100%' }}>
           {(project.columns || []).map(col => (
             <div key={col.id} style={{ width: 280, display: 'flex', flexDirection: 'column' }}
-              onDragOver={e => { e.preventDefault(); dragOverCol.current = col.id }}
+              onDragOver={e => { e.preventDefault(); dragOverCol.current = col.id; setDragOverColId(col.id) }}
+              onDragLeave={() => setDragOverColId(null)}
               onDrop={() => handleDrop(col.id)}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '0 4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -184,7 +187,7 @@ export default function KanbanBoard() {
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 18, lineHeight: 1 }}>＋</button>
               </div>
 
-              <div style={{ flex: 1, minHeight: 100, borderRadius: 8, padding: 4 }}>
+              <div style={{ flex: 1, minHeight: 100, borderRadius: 8, padding: 4, background: dragOverColId === col.id ? 'rgba(99,102,241,0.08)' : 'transparent', border: dragOverColId === col.id ? '2px dashed #6366f1' : '2px solid transparent', transition: 'all 0.15s' }}>
                 {getColumnTasks(col.id).map(task => (
                   <div key={task._id} draggable
                     onDragStart={() => { dragTask.current = task._id }}

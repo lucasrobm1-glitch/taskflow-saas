@@ -80,6 +80,8 @@ router.post('/:id/members', auth, async (req, res) => {
 // Deletar projeto
 router.delete('/:id', auth, async (req, res) => {
   try {
+    const Task = require('../models/Task');
+    await Task.deleteMany({ project: req.params.id, tenant: req.tenant._id });
     await Project.findOneAndDelete({ _id: req.params.id, tenant: req.tenant._id, owner: req.user._id });
     res.json({ message: 'Projeto deletado' });
   } catch (err) {

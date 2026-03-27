@@ -1,10 +1,21 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const Tenant = require('../models/Tenant');
 const { auth } = require('../middleware/auth');
 
 const signToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10,
+  message: { message: 'Muitas tentativas de login. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const sanitize = (str) => typeof str === 'string' ? str.replace(/[<>]/g, '') : str;
 
 // Registro
 router.post('/register', async (req, res) => {
@@ -54,10 +65,11 @@ router.post('/register-invite', async (req, res) => {
 });
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email }).populate('tenant');
+    if (!email || !password) return res.status(400).json({ message: 'Email e senha são obrigatórios' });
+    const user = await User.findOne({ email: sanitize(email).toLowerCase() }).populate('tenant');
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ message: 'Email ou senha inválidos' });
     }

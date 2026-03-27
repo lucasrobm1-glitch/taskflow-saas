@@ -27,7 +27,7 @@ export function NotificationProvider({ children }) {
     if (!socket || !user) return
 
     const onCreated = (task) => {
-      if (task.reporter?._id === user._id) return // ignora próprias ações
+      if (task.reporter?._id === user._id) return
       add({
         type: 'created',
         icon: '✅',
@@ -48,6 +48,12 @@ export function NotificationProvider({ children }) {
 
     const onUpdated = (task) => {
       if (task.reporter?._id === user._id) return
+      // Notifica se o usuário foi atribuído
+      const wasAssigned = task.assignees?.some(a => (a._id || a) === user._id)
+      if (wasAssigned) {
+        add({ type: 'assigned', icon: '👤', text: `Você foi atribuído à tarefa: "${task.title}"`, taskId: task._id, projectId: task.project })
+        return
+      }
       add({
         type: 'updated',
         icon: '✏️',
@@ -57,14 +63,23 @@ export function NotificationProvider({ children }) {
       })
     }
 
+    const onComment = (task) => {
+      if (!task.comments?.length) return
+      const last = task.comments[task.comments.length - 1]
+      if ((last?.user?._id || last?.user) === user._id) return
+      add({ type: 'comment', icon: '💬', text: `Novo comentário em "${task.title}"`, taskId: task._id, projectId: task.project })
+    }
+
     socket.on('task:created', onCreated)
     socket.on('task:moved', onMoved)
     socket.on('task:updated', onUpdated)
+    socket.on('task:updated', onComment)
 
     return () => {
       socket.off('task:created', onCreated)
       socket.off('task:moved', onMoved)
       socket.off('task:updated', onUpdated)
+      socket.off('task:updated', onComment)
     }
   }, [socket, user, add])
 
