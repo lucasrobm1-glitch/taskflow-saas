@@ -18,7 +18,6 @@ const TYPE_ICONS = { task: '✅', bug: '🐛', feature: '✨', improvement: '⚡
 export default function KanbanBoard() {
   const { projectId } = useParams()
   const { user } = useAuth()
-  usePageTitle(project?.name || 'Kanban')
   const isAdminOrOwner = user && ['admin', 'owner'].includes(user.role)
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
@@ -36,6 +35,7 @@ export default function KanbanBoard() {
   const [dragOverColId, setDragOverColId] = useState(null)
   const dragTask = useRef(null)
   const dragOverCol = useRef(null)
+  usePageTitle(project?.name || 'Kanban')
 
   useEffect(() => {
     api(`/api/projects/${projectId}`).then(d => d._id && setProject(d))
