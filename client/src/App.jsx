@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import { SocketProvider } from './context/SocketContext.jsx'
 import { NotificationProvider } from './context/NotificationContext.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
+import FloatingChat from './components/FloatingChat.jsx'
 
 const API = import.meta.env.VITE_API_URL || ''
 
@@ -57,16 +58,12 @@ function Layout() {
         <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
           <NavLink to="/" end style={nav} onClick={closeSidebar}>🏠 Dashboard</NavLink>
           <NavLink to="/team" style={nav} onClick={closeSidebar}>👥 Equipe</NavLink>
-          <NavLink to="/chat" style={nav} onClick={closeSidebar}>💬 Chat</NavLink>
           <div style={{ marginTop: 16, padding: '6px 12px', fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Projetos</div>
           {projects.map(p => (
             <div key={String(p._id)}>
               <NavLink to={'/projects/' + String(p._id) + '/board'} style={nav} onClick={closeSidebar}>
                 <span>{p.icon || '📋'}</span>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-              </NavLink>
-              <NavLink to={'/projects/' + String(p._id) + '/chat'} style={({ isActive }) => ({ ...nav({ isActive }), paddingLeft: 28, fontSize: 13 })} onClick={closeSidebar}>
-                💬 Chat
               </NavLink>
             </div>
           ))}
@@ -98,6 +95,7 @@ function Layout() {
       <main className="main-content" style={{ flex: 1, overflow: 'auto', background: '#0f0f1a' }}>
         <Outlet />
       </main>
+      <FloatingChat />
     </div>
   )
 }

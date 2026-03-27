@@ -24,16 +24,19 @@ export default function KanbanBoard() {
   const [editMode, setEditMode] = useState(false)
   const [editForm, setEditForm] = useState({})
   const [newTaskColumn, setNewTaskColumn] = useState('todo')
-  const [taskForm, setTaskForm] = useState({ title: '', description: '', priority: 'medium', type: 'task', dueDate: '', estimatedHours: '' })
+  const [taskForm, setTaskForm] = useState({ title: '', description: '', priority: 'medium', type: 'task', dueDate: '', estimatedHours: '', assignees: [] })
   const [msg, setMsg] = useState('')
   const [showMembers, setShowMembers] = useState(false)
   const [tenantMembers, setTenantMembers] = useState([])
+  const [filters, setFilters] = useState({ priority: '', assignee: '', search: '' })
+  const [newComment, setNewComment] = useState('')
   const dragTask = useRef(null)
   const dragOverCol = useRef(null)
 
   useEffect(() => {
     api(`/api/projects/${projectId}`).then(d => d._id && setProject(d))
     api(`/api/tasks?projectId=${projectId}`).then(d => Array.isArray(d) && setTasks(d))
+    api('/api/teams').then(d => Array.isArray(d) && setTenantMembers(d))
   }, [projectId])
 
   const openMembers = () => {
@@ -48,7 +51,26 @@ export default function KanbanBoard() {
 
   const isProjectMember = (userId) => project && project.members && project.members.some(m => (m.user?._id || m.user) === userId)
 
-  const getColumnTasks = (colId) => tasks.filter(t => t.column === colId).sort((a, b) => a.order - b.order)
+  const addComment = async (e) => {
+    e.preventDefault()
+    if (!newComment.trim()) return
+    const comments = await api(`/api/tasks/${selectedTask._id}/comments`, { method: 'POST', body: JSON.stringify({ text: newComment.trim() }) })
+    if (Array.isArray(comments)) {
+      setSelectedTask(prev => ({ ...prev, comments }))
+      setTasks(prev => prev.map(t => t._id === selectedTask._id ? { ...t, comments } : t))
+    }
+    setNewComment('')
+  }
+
+  const getColumnTasks = (colId) => {
+    return tasks.filter(t => {
+      if (t.column !== colId) return false
+      if (filters.priority && t.priority !== filters.priority) return false
+      if (filters.assignee && !t.assignees?.some(a => a._id === filters.assignee || a === filters.assignee)) return false
+      if (filters.search && !t.title.toLowerCase().includes(filters.search.toLowerCase())) return false
+      return true
+    }).sort((a, b) => a.order - b.order)
+  }
 
   const handleDrop = async (colId) => {
     const taskId = dragTask.current
@@ -95,7 +117,7 @@ export default function KanbanBoard() {
       if (data._id) {
         setTasks(prev => [...prev, data])
         setShowTaskModal(false)
-        setTaskForm({ title: '', description: '', priority: 'medium', type: 'task', dueDate: '', estimatedHours: '' })
+        setTaskForm({ title: '', description: '', priority: 'medium', type: 'task', dueDate: '', estimatedHours: '', assignees: [] })
       } else { setMsg(data.message || 'Erro ao criar tarefa') }
     } catch { setMsg('Erro ao criar tarefa') }
   }
@@ -107,7 +129,7 @@ export default function KanbanBoard() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid #2a2a4a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1a1a2e' }}>
+      <div style={{ padding: '20px 24px', borderBottom: '1px solid #2a2a4a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1a1a2e', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 22 }}>{project.icon}</span>
           <div>
@@ -115,7 +137,24 @@ export default function KanbanBoard() {
             <p style={{ fontSize: 12, color: '#94a3b8' }}>Quadro Kanban</p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Filtros */}
+          <input placeholder="🔍 Buscar..." value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+            style={{ padding: '6px 10px', background: '#16213e', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e2e8f0', fontSize: 13, outline: 'none', width: 140 }} />
+          <select value={filters.priority} onChange={e => setFilters(f => ({ ...f, priority: e.target.value }))}
+            style={{ padding: '6px 10px', background: '#16213e', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e2e8f0', fontSize: 13, outline: 'none' }}>
+            <option value="">Prioridade</option>
+            <option value="low">Baixa</option>
+            <option value="medium">Média</option>
+            <option value="high">Alta</option>
+            <option value="critical">Crítica</option>
+          </select>
+          {(filters.search || filters.priority || filters.assignee) && (
+            <button onClick={() => setFilters({ priority: '', assignee: '', search: '' })}
+              style={{ padding: '6px 10px', background: 'rgba(239,68,68,0.15)', border: '1px solid #ef4444', borderRadius: 8, color: '#f87171', fontSize: 12, cursor: 'pointer' }}>
+              ✕ Limpar
+            </button>
+          )}
           {isAdminOrOwner && (
             <button onClick={openMembers}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: '#2a2a4a', color: '#e2e8f0', border: '1px solid #3a3a5a', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>
@@ -222,6 +261,24 @@ export default function KanbanBoard() {
                   <input style={inputStyle} type="number" placeholder="0" value={taskForm.estimatedHours} onChange={e => setTaskForm({ ...taskForm, estimatedHours: e.target.value })} />
                 </div>
               </div>
+              {tenantMembers.length > 0 && (
+                <div>
+                  <label style={{ display: 'block', marginBottom: 8, fontSize: 13, color: '#94a3b8' }}>Atribuir a</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {tenantMembers.map(m => {
+                      const selected = taskForm.assignees.includes(m._id)
+                      return (
+                        <button key={m._id} type="button"
+                          onClick={() => setTaskForm(f => ({ ...f, assignees: selected ? f.assignees.filter(id => id !== m._id) : [...f.assignees, m._id] }))}
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 20, border: `1px solid ${selected ? '#6366f1' : '#2a2a4a'}`, background: selected ? 'rgba(99,102,241,0.15)' : 'transparent', color: selected ? '#818cf8' : '#94a3b8', cursor: 'pointer', fontSize: 12 }}>
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'white', fontWeight: 700 }}>{m.name?.[0]?.toUpperCase()}</div>
+                          {m.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setShowTaskModal(false)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #2a2a4a', borderRadius: 8, color: '#94a3b8', cursor: 'pointer' }}>Cancelar</button>
                 <button type="submit" style={{ padding: '8px 16px', background: '#6366f1', border: 'none', borderRadius: 8, color: 'white', fontWeight: 600, cursor: 'pointer' }}>Criar Tarefa</button>
@@ -253,7 +310,7 @@ export default function KanbanBoard() {
                     </button>
                   </>
                 )}
-                <button onClick={() => { setSelectedTask(null); setEditMode(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 20 }}>✕</button>
+                <button onClick={() => { setSelectedTask(null); setEditMode(false); setNewComment('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 20 }}>✕</button>
               </div>
             </div>
 
@@ -315,6 +372,38 @@ export default function KanbanBoard() {
                     </div>
                   </div>
                 )}
+
+                {/* Comentários */}
+                <div style={{ borderTop: '1px solid #2a2a4a', paddingTop: 16, marginTop: 8 }}>
+                  <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 12 }}>Comentários ({selectedTask.comments?.length || 0})</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12, maxHeight: 180, overflowY: 'auto' }}>
+                    {(selectedTask.comments || []).map((c, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 8 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'white', fontWeight: 700, flexShrink: 0 }}>
+                          {c.user?.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 3 }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{c.user?.name}</span>
+                            <span style={{ fontSize: 11, color: '#475569' }}>{new Date(c.createdAt).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                          <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>{c.text}</div>
+                        </div>
+                      </div>
+                    ))}
+                    {(!selectedTask.comments || selectedTask.comments.length === 0) && (
+                      <div style={{ fontSize: 13, color: '#475569' }}>Nenhum comentário ainda.</div>
+                    )}
+                  </div>
+                  <form onSubmit={addComment} style={{ display: 'flex', gap: 8 }}>
+                    <input value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Adicionar comentário..."
+                      style={{ flex: 1, padding: '7px 10px', background: '#16213e', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e2e8f0', fontSize: 13, outline: 'none' }} />
+                    <button type="submit" disabled={!newComment.trim()}
+                      style={{ padding: '7px 12px', background: '#6366f1', border: 'none', borderRadius: 8, color: 'white', cursor: newComment.trim() ? 'pointer' : 'not-allowed', opacity: newComment.trim() ? 1 : 0.5, fontSize: 13 }}>
+                      Enviar
+                    </button>
+                  </form>
+                </div>
               </>
             )}
           </div>
