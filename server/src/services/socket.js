@@ -21,6 +21,9 @@ const setupSocket = (io) => {
   io.on('connection', (socket) => {
     console.log(`Usuário conectado: ${socket.user.name}`);
 
+    // Entrar em sala do tenant (chat geral)
+    socket.join(`tenant:${socket.tenant._id}`);
+
     // Entrar em sala do projeto
     socket.on('join:project', (projectId) => {
       socket.join(`project:${projectId}`);
@@ -37,6 +40,24 @@ const setupSocket = (io) => {
         taskId,
         user: { id: socket.user._id, name: socket.user.name, avatar: socket.user.avatar }
       });
+    });
+
+    // Chat em tempo real
+    socket.on('chat:message', async ({ text, projectId }) => {
+      try {
+        const Message = require('../models/Message');
+        const msg = await Message.create({
+          tenant: socket.tenant._id,
+          project: projectId || null,
+          sender: socket.user._id,
+          text: text.trim().slice(0, 2000)
+        });
+        const populated = await msg.populate('sender', 'name');
+        const room = projectId ? `project:${projectId}` : `tenant:${socket.tenant._id}`;
+        io.to(room).emit('chat:message', populated);
+      } catch (err) {
+        socket.emit('chat:error', { message: err.message });
+      }
     });
 
     socket.on('disconnect', () => {

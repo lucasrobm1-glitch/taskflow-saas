@@ -45,12 +45,18 @@ function Layout() {
         <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
           <NavLink to="/" end style={nav}>🏠 Dashboard</NavLink>
           <NavLink to="/team" style={nav}>👥 Equipe</NavLink>
+          <NavLink to="/chat" style={nav}>💬 Chat</NavLink>
           <div style={{ marginTop: 16, padding: '6px 12px', fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Projetos</div>
           {projects.map(p => (
-            <NavLink key={String(p._id)} to={'/projects/' + String(p._id) + '/board'} style={nav}>
-              <span>{p.icon || '📋'}</span>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-            </NavLink>
+            <div key={String(p._id)}>
+              <NavLink to={'/projects/' + String(p._id) + '/board'} style={nav}>
+                <span>{p.icon || '📋'}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+              </NavLink>
+              <NavLink to={'/projects/' + String(p._id) + '/chat'} style={({ isActive }) => ({ ...nav({ isActive }), paddingLeft: 28, fontSize: 13 })}>
+                💬 Chat
+              </NavLink>
+            </div>
           ))}
         </nav>
 
@@ -92,6 +98,7 @@ const TeamPage = React.lazy(() => import('./pages/TeamPage.jsx'))
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage.jsx'))
 const BillingPage = React.lazy(() => import('./pages/BillingPage.jsx'))
 const SupportPage = React.lazy(() => import('./pages/SupportPage.jsx'))
+const ChatPage = React.lazy(() => import('./pages/ChatPage.jsx'))
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -117,6 +124,8 @@ export default function App() {
                   <Route path="projects/:projectId/sprints" element={<SprintPage />} />
                   <Route path="projects/:projectId/reports" element={<ReportsPage />} />
                   <Route path="team" element={<TeamPage />} />
+                  <Route path="chat" element={<ChatPage />} />
+                  <Route path="projects/:projectId/chat" element={<ChatPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="settings/billing" element={<BillingPage />} />
                   <Route path="support" element={<SupportPage />} />

@@ -17,6 +17,7 @@ const reportRoutes = require('./routes/reports');
 const integrationRoutes = require('./routes/integrations');
 const webhookRoutes = require('./routes/webhooks');
 const ssoRoutes = require('./routes/sso');
+const messageRoutes = require('./routes/messages');
 
 const { setupSocket } = require('./services/socket');
 
@@ -53,6 +54,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/integrations', integrationRoutes);
 app.use('/api/sso', ssoRoutes);
+app.use('/api/messages', messageRoutes);
 
 let dbConnected = false;
 app.get('/api/health', (req, res) => res.json({ status: 'ok', db: dbConnected }));
