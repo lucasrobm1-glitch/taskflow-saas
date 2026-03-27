@@ -24,7 +24,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     api('/api/projects').then(d => Array.isArray(d) && setProjects(d))
-    api('/api/team').then(d => Array.isArray(d) && setMembers(d.length)).catch(() => {})
+    api('/api/teams').then(d => Array.isArray(d) && setMembers(d.length)).catch(() => {})
   }, [])
 
   const deleteProject = async (id) => {

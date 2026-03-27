@@ -1,10 +1,7 @@
 const router = require('express').Router();
 const User = require('../models/User');
 const { auth, requireRole } = require('../middleware/auth');
-const { Resend } = require('resend');
 const { checkMemberLimit } = require('../middleware/planLimits');
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Listar membros do tenant
 router.get('/', auth, async (req, res) => {
@@ -51,7 +48,8 @@ router.post('/invite', auth, requireRole('owner', 'admin'), checkMemberLimit, as
 
     res.status(201).json({ message: 'Membro adicionado com sucesso', user: userObj });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Erro ao adicionar membro:', err);
+    res.status(500).json({ message: err.message || 'Erro interno ao adicionar membro' });
   }
 });
 

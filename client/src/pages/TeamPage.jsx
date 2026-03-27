@@ -7,7 +7,13 @@ const API = import.meta.env.VITE_API_URL || ''
 
 function apiFetch(path, opts) {
   const token = localStorage.getItem("token")
-  return fetch(API + path, { method: (opts && opts.method) || "GET", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: opts && opts.body }).then(function(r) { return r.json() })
+  return fetch(API + path, { method: (opts && opts.method) || "GET", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: opts && opts.body })
+    .then(function(r) {
+      return r.json().then(function(data) {
+        if (!r.ok) throw new Error(data.message || "Erro " + r.status)
+        return data
+      })
+    })
 }
 
 export default function TeamPage() {
@@ -116,7 +122,7 @@ export default function TeamPage() {
             React.createElement("option", { value: "viewer" }, "Visualizador")
           ),
           React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
-            React.createElement("button", { type: "button", onClick: function() { setShowInvite(false); setMemberName(""); setPassword(""); setMsg("") }, style: { padding: "8px 16px", background: "transparent", border: "1px solid #2a2a4a", borderRadius: 8, color: "#94a3b8", cursor: "pointer" } }, "Cancelar"),
+            React.createElement("button", { type: "button", onClick: function() { setShowInvite(false); setEmail(""); setMemberName(""); setPassword(""); setMsg("") }, style: { padding: "8px 16px", background: "transparent", border: "1px solid #2a2a4a", borderRadius: 8, color: "#94a3b8", cursor: "pointer" } }, "Cancelar"),
             React.createElement("button", { type: "submit", style: { padding: "8px 16px", background: "#6366f1", border: "none", borderRadius: 8, color: "white", fontWeight: 600, cursor: "pointer" } }, "Enviar")
           )
         )

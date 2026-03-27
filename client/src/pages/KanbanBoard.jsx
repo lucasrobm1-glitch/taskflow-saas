@@ -26,6 +26,8 @@ export default function KanbanBoard() {
   const [newTaskColumn, setNewTaskColumn] = useState('todo')
   const [taskForm, setTaskForm] = useState({ title: '', description: '', priority: 'medium', type: 'task', dueDate: '', estimatedHours: '' })
   const [msg, setMsg] = useState('')
+  const [showMembers, setShowMembers] = useState(false)
+  const [tenantMembers, setTenantMembers] = useState([])
   const dragTask = useRef(null)
   const dragOverCol = useRef(null)
 
@@ -33,6 +35,18 @@ export default function KanbanBoard() {
     api(`/api/projects/${projectId}`).then(d => d._id && setProject(d))
     api(`/api/tasks?projectId=${projectId}`).then(d => Array.isArray(d) && setTasks(d))
   }, [projectId])
+
+  const openMembers = () => {
+    api('/api/teams').then(d => Array.isArray(d) && setTenantMembers(d))
+    setShowMembers(true)
+  }
+
+  const addMemberToProject = async (userId) => {
+    const updated = await api(`/api/projects/${projectId}/members`, { method: 'POST', body: JSON.stringify({ userId, role: 'member' }) })
+    if (updated._id) setProject(updated)
+  }
+
+  const isProjectMember = (userId) => project && project.members && project.members.some(m => (m.user?._id || m.user) === userId)
 
   const getColumnTasks = (colId) => tasks.filter(t => t.column === colId).sort((a, b) => a.order - b.order)
 
@@ -101,10 +115,18 @@ export default function KanbanBoard() {
             <p style={{ fontSize: 12, color: '#94a3b8' }}>Quadro Kanban</p>
           </div>
         </div>
-        <button onClick={() => { setNewTaskColumn('todo'); setShowTaskModal(true) }}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: '#6366f1', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
-          ＋ Nova Tarefa
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isAdminOrOwner && (
+            <button onClick={openMembers}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: '#2a2a4a', color: '#e2e8f0', border: '1px solid #3a3a5a', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>
+              👥 Membros ({project.members?.length || 0})
+            </button>
+          )}
+          <button onClick={() => { setNewTaskColumn('todo'); setShowTaskModal(true) }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: '#6366f1', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+            ＋ Nova Tarefa
+          </button>
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowX: 'auto', padding: 20 }}>
@@ -295,6 +317,37 @@ export default function KanbanBoard() {
                 )}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showMembers && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#1e1e3a', border: '1px solid #2a2a4a', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 600, color: '#e2e8f0' }}>Membros do Projeto</h3>
+              <button onClick={() => setShowMembers(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20 }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {tenantMembers.map(m => {
+                const already = isProjectMember(m._id)
+                return (
+                  <div key={m._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#16213e', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'white', fontWeight: 700 }}>{m.name?.[0]?.toUpperCase()}</div>
+                      <div>
+                        <div style={{ fontSize: 14, color: '#e2e8f0' }}>{m.name}</div>
+                        <div style={{ fontSize: 12, color: '#94a3b8' }}>{m.email}</div>
+                      </div>
+                    </div>
+                    {already
+                      ? <span style={{ fontSize: 12, color: '#10b981' }}>✓ Membro</span>
+                      : <button onClick={() => addMemberToProject(m._id)} style={{ padding: '5px 12px', background: '#6366f1', border: 'none', borderRadius: 6, color: 'white', fontSize: 12, cursor: 'pointer' }}>Adicionar</button>
+                    }
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
